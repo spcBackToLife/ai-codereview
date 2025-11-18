@@ -1,0 +1,187 @@
+{
+  "category": "react",
+  "name": "React 代码审查规范",
+  "rules": [
+    {
+      "id": "react-001",
+      "name": "组件命名规范",
+      "description": "组件名必须使用 PascalCase，文件名与组件名保持一致",
+      "level": "强卡控",
+      "goodExample": "// UserProfile.tsx\nconst UserProfile: React.FC = () => {\n  return <div>User Profile</div>;\n};\n\nexport default UserProfile;",
+      "badExample": "// userProfile.tsx 或 user-profile.tsx\nconst userProfile = () => {\n  return <div>User Profile</div>;\n};",
+      "reason": "统一的命名规范提高代码可读性和可维护性"
+    },
+    {
+      "id": "react-002",
+      "name": "函数组件优先",
+      "description": "优先使用函数组件和 Hooks，避免使用类组件（除非有特殊需求）",
+      "level": "强卡控",
+      "goodExample": "const UserList: React.FC = () => {\n  const [users, setUsers] = useState<User[]>([]);\n  useEffect(() => {\n    fetchUsers().then(setUsers);\n  }, []);\n  return <div>{users.map(user => <UserItem key={user.id} user={user} />)}</div>;\n};",
+      "badExample": "class UserList extends React.Component {\n  state = { users: [] };\n  componentDidMount() {\n    fetchUsers().then(users => this.setState({ users }));\n  }\n  render() {\n    return <div>{this.state.users.map(user => <UserItem key={user.id} user={user} />)}</div>;\n  }\n}",
+      "reason": "函数组件更简洁，Hooks 提供更好的逻辑复用"
+    },
+    {
+      "id": "react-003",
+      "name": "Props 类型定义",
+      "description": "所有组件的 Props 必须使用 interface 或 type 定义类型",
+      "level": "强卡控",
+      "goodExample": "interface UserCardProps {\n  user: UserInfo;\n  onEdit?: (id: string) => void;\n  className?: string;\n}\n\nconst UserCard: React.FC<UserCardProps> = ({ user, onEdit, className }) => {\n  return <div className={className}>{user.name}</div>;\n};",
+      "badExample": "const UserCard = ({ user, onEdit, className }) => {\n  return <div className={className}>{user.name}</div>;\n};",
+      "reason": "类型定义提供类型检查和 IDE 提示，减少错误"
+    },
+    {
+      "id": "react-004",
+      "name": "key 属性使用",
+      "description": "列表渲染必须提供唯一且稳定的 key，禁止使用数组索引作为 key（除非列表不可变）",
+      "level": "强卡控",
+      "goodExample": "users.map(user => <UserItem key={user.id} user={user} />)\nitems.map(item => <Item key={`${item.type}-${item.id}`} item={item} />)",
+      "badExample": "users.map((user, index) => <UserItem key={index} user={user} />)\nitems.map(item => <Item item={item} />)",
+      "reason": "正确的 key 帮助 React 识别列表项变化，提高渲染性能"
+    },
+    {
+      "id": "react-005",
+      "name": "useState 初始化",
+      "description": "useState 初始值应该明确类型，复杂对象使用函数式初始化",
+      "level": "建议",
+      "goodExample": "const [count, setCount] = useState<number>(0);\nconst [user, setUser] = useState<UserInfo | null>(null);\nconst [config, setConfig] = useState<Config>(() => getInitialConfig());",
+      "badExample": "const [count, setCount] = useState(0);\nconst [config, setConfig] = useState(getInitialConfig());",
+      "reason": "明确类型和函数式初始化可以避免不必要的计算和类型错误"
+    },
+    {
+      "id": "react-006",
+      "name": "useEffect 依赖项",
+      "description": "useEffect 必须正确声明依赖项，避免遗漏依赖导致闭包问题",
+      "level": "强卡控",
+      "goodExample": "useEffect(() => {\n  const timer = setInterval(() => {\n    setCount(prev => prev + 1);\n  }, 1000);\n  return () => clearInterval(timer);\n}, []);\n\nuseEffect(() => {\n  fetchUser(userId).then(setUser);\n}, [userId]);",
+      "badExample": "useEffect(() => {\n  fetchUser(userId).then(setUser);\n}, []);\n\nuseEffect(() => {\n  console.log(user.name);\n}, []);",
+      "reason": "正确的依赖项确保 effect 在正确的时机执行，避免闭包陷阱"
+    },
+    {
+      "id": "react-007",
+      "name": "useCallback 和 useMemo 使用",
+      "description": "合理使用 useCallback 和 useMemo，避免过度优化，仅在必要时使用",
+      "level": "建议",
+      "goodExample": "const handleClick = useCallback((id: string) => {\n  onItemClick(id);\n}, [onItemClick]);\n\nconst expensiveValue = useMemo(() => {\n  return computeExpensiveValue(a, b);\n}, [a, b]);",
+      "badExample": "const handleClick = useCallback((id: string) => {\n  console.log(id);\n}, []);\n\nconst simpleValue = useMemo(() => a + b, [a, b]);",
+      "reason": "过度使用 useCallback 和 useMemo 会增加代码复杂度，应仅在性能需要时使用"
+    },
+    {
+      "id": "react-008",
+      "name": "条件渲染规范",
+      "description": "使用逻辑与、三元运算符或提前返回进行条件渲染，保持 JSX 简洁",
+      "level": "建议",
+      "goodExample": "{isLoading && <Loading />}\n{error ? <ErrorMessage error={error} /> : <Content data={data} />}\n\nif (!user) return null;\nreturn <UserProfile user={user} />;",
+      "badExample": "{isLoading === true && <Loading />}\n{error !== null ? <ErrorMessage error={error} /> : null}\n{data && data.length > 0 && data.map(...)}",
+      "reason": "简洁的条件渲染提高代码可读性"
+    },
+    {
+      "id": "react-009",
+      "name": "事件处理函数命名",
+      "description": "事件处理函数使用 handle 或 on 前缀，保持命名一致性",
+      "level": "建议",
+      "goodExample": "const handleSubmit = (e: React.FormEvent) => {\n  e.preventDefault();\n  onSubmit(data);\n};\n\nconst handleClick = () => {\n  onClick(id);\n};",
+      "badExample": "const submit = (e: React.FormEvent) => {\n  e.preventDefault();\n};\n\nconst clickHandler = () => {\n  onClick(id);\n};",
+      "reason": "统一的命名规范提高代码可读性"
+    },
+    {
+      "id": "react-010",
+      "name": "避免在 render 中创建函数",
+      "description": "避免在 JSX 中直接创建函数，应使用 useCallback 或提取到组件外部",
+      "level": "建议",
+      "goodExample": "const handleClick = useCallback((id: string) => {\n  onItemClick(id);\n}, [onItemClick]);\n\nreturn <Button onClick={handleClick}>Click</Button>;",
+      "badExample": "return <Button onClick={() => onItemClick(id)}>Click</Button>;\nreturn <Button onClick={function() { onItemClick(id); }}>Click</Button>;",
+      "reason": "避免每次渲染创建新函数，减少不必要的重渲染"
+    },
+    {
+      "id": "react-011",
+      "name": "组件拆分原则",
+      "description": "单个组件不应超过 300 行，复杂组件应拆分为多个小组件",
+      "level": "建议",
+      "goodExample": "const UserProfile: React.FC = () => {\n  return (\n    <div>\n      <UserHeader user={user} />\n      <UserDetails user={user} />\n      <UserActions onEdit={handleEdit} />\n    </div>\n  );\n};",
+      "badExample": "const UserProfile: React.FC = () => {\n  // 500+ 行代码，包含所有逻辑和 UI\n  return <div>...</div>;\n};",
+      "reason": "拆分组件提高可维护性和可测试性"
+    },
+    {
+      "id": "react-012",
+      "name": "自定义 Hooks 规范",
+      "description": "提取可复用的逻辑到自定义 Hooks，Hook 名以 use 开头",
+      "level": "建议",
+      "goodExample": "const useUser = (userId: string) => {\n  const [user, setUser] = useState<UserInfo | null>(null);\n  const [loading, setLoading] = useState(true);\n  \n  useEffect(() => {\n    fetchUser(userId).then(user => {\n      setUser(user);\n      setLoading(false);\n    });\n  }, [userId]);\n  \n  return { user, loading };\n};",
+      "badExample": "const getUser = (userId: string) => {\n  // 在组件中重复的逻辑\n};",
+      "reason": "自定义 Hooks 提高逻辑复用性，减少代码重复"
+    },
+    {
+      "id": "react-013",
+      "name": "Props 解构规范",
+      "description": "在函数参数中解构 Props，使用默认值处理可选属性",
+      "level": "建议",
+      "goodExample": "interface ButtonProps {\n  label: string;\n  onClick: () => void;\n  variant?: 'primary' | 'secondary';\n}\n\nconst Button: React.FC<ButtonProps> = ({ \n  label, \n  onClick, \n  variant = 'primary' \n}) => {\n  return <button className={variant} onClick={onClick}>{label}</button>;\n};",
+      "badExample": "const Button: React.FC<ButtonProps> = (props) => {\n  return <button className={props.variant || 'primary'} onClick={props.onClick}>{props.label}</button>;\n};",
+      "reason": "解构 Props 使代码更简洁，默认值处理更清晰"
+    },
+    {
+      "id": "react-014",
+      "name": "避免使用索引作为 key",
+      "description": "列表渲染时，如果列表项可能重新排序、添加或删除，禁止使用索引作为 key",
+      "level": "强卡控",
+      "goodExample": "const items = [{ id: '1', name: 'A' }, { id: '2', name: 'B' }];\nreturn items.map(item => <Item key={item.id} item={item} />);",
+      "badExample": "const items = [{ id: '1', name: 'A' }, { id: '2', name: 'B' }];\nreturn items.map((item, index) => <Item key={index} item={item} />);",
+      "reason": "使用索引作为 key 会导致组件状态混乱和性能问题"
+    },
+    {
+      "id": "react-015",
+      "name": "错误边界使用",
+      "description": "在关键组件树周围使用 ErrorBoundary 捕获和处理错误",
+      "level": "建议",
+      "goodExample": "class ErrorBoundary extends React.Component {\n  state = { hasError: false };\n  \n  static getDerivedStateFromError() {\n    return { hasError: true };\n  }\n  \n  render() {\n    if (this.state.hasError) {\n      return <ErrorFallback />;\n    }\n    return this.props.children;\n  }\n}",
+      "badExample": "// 没有错误边界，任何组件错误都会导致整个应用崩溃",
+      "reason": "错误边界可以防止单个组件错误导致整个应用崩溃"
+    },
+    {
+      "id": "react-016",
+      "name": "避免直接修改 state",
+      "description": "禁止直接修改 state，必须使用 setState 或状态更新函数",
+      "level": "强卡控",
+      "goodExample": "setUsers([...users, newUser]);\nsetCount(prev => prev + 1);\nsetConfig({ ...config, theme: 'dark' });",
+      "badExample": "users.push(newUser);\ncount++;\nconfig.theme = 'dark';",
+      "reason": "直接修改 state 不会触发重新渲染，可能导致 UI 不同步"
+    },
+    {
+      "id": "react-017",
+      "name": "Context 使用规范",
+      "description": "合理使用 Context，避免过度使用导致性能问题，考虑将 Context 拆分",
+      "level": "建议",
+      "goodExample": "const ThemeContext = createContext<Theme>('light');\nconst UserContext = createContext<UserInfo | null>(null);\n\n// 拆分多个 Context 而不是一个大的 Context",
+      "badExample": "const AppContext = createContext<{\n  theme: Theme;\n  user: UserInfo;\n  config: Config;\n  // ... 很多不相关的状态\n}>();",
+      "reason": "拆分 Context 可以减少不必要的重渲染，提高性能"
+    },
+    {
+      "id": "react-018",
+      "name": "避免在 JSX 中使用复杂逻辑",
+      "description": "将复杂逻辑提取到函数或 useMemo 中，保持 JSX 简洁",
+      "level": "建议",
+      "goodExample": "const filteredUsers = useMemo(() => {\n  return users.filter(user => \n    user.name.includes(searchTerm) && user.status === 'active'\n  );\n}, [users, searchTerm]);\n\nreturn <UserList users={filteredUsers} />;",
+      "badExample": "return (\n  <UserList \n    users={users.filter(user => \n      user.name.includes(searchTerm) && \n      user.status === 'active' &&\n      user.role === selectedRole\n    )} \n  />\n);",
+      "reason": "提取复杂逻辑提高代码可读性和可维护性"
+    },
+    {
+      "id": "react-019",
+      "name": "组件导出规范",
+      "description": "优先使用命名导出，默认导出仅用于页面组件或主要组件",
+      "level": "建议",
+      "goodExample": "export const UserCard: React.FC<UserCardProps> = ({ user }) => {\n  return <div>{user.name}</div>;\n};\n\n// 或\nexport default UserCard;",
+      "badExample": "export default function UserCard() {}\n// 同时又有\nexport { UserCard };",
+      "reason": "统一的导出规范提高代码一致性和可维护性"
+    },
+    {
+      "id": "react-020",
+      "name": "性能优化检查",
+      "description": "对于大型列表或复杂组件，考虑使用 React.memo、useMemo、useCallback 进行优化",
+      "level": "优化",
+      "goodExample": "const UserItem = React.memo<UserItemProps>(({ user, onEdit }) => {\n  const handleEdit = useCallback(() => {\n    onEdit(user.id);\n  }, [user.id, onEdit]);\n  \n  return <div onClick={handleEdit}>{user.name}</div>;\n});",
+      "badExample": "const UserItem = ({ user, onEdit }) => {\n  return <div onClick={() => onEdit(user.id)}>{user.name}</div>;\n};",
+      "reason": "合理的性能优化可以减少不必要的重渲染，提高应用性能"
+    }
+  ]
+}
+

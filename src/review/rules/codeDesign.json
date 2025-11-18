@@ -1,0 +1,196 @@
+{
+  "category": "code-design",
+  "name": "代码设计审查规范",
+  "rules": [
+    {
+      "id": "design-001",
+      "name": "单一职责原则",
+      "description": "每个函数、类、模块应该只负责一个功能，避免功能耦合",
+      "level": "强卡控",
+      "goodExample": "// 职责分离\nfunction validateEmail(email: string): boolean {\n  return /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email);\n}\n\nfunction sendEmail(email: string, content: string): Promise<void> {\n  return emailService.send(email, content);\n}\n\n// 使用\nif (validateEmail(userEmail)) {\n  await sendEmail(userEmail, message);\n}",
+      "badExample": "function validateAndSendEmail(email: string, content: string): Promise<void> {\n  if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) {\n    throw new Error('Invalid email');\n  }\n  return emailService.send(email, content);\n}",
+      "reason": "单一职责原则提高代码可测试性、可维护性和可复用性"
+    },
+    {
+      "id": "design-002",
+      "name": "函数长度限制",
+      "description": "单个函数不应超过 50 行，复杂逻辑应拆分为多个小函数",
+      "level": "建议",
+      "goodExample": "function processOrder(order: Order): void {\n  validateOrder(order);\n  calculateTotal(order);\n  applyDiscount(order);\n  saveOrder(order);\n}\n\nfunction validateOrder(order: Order): void {\n  if (!order.items.length) throw new Error('Empty order');\n  if (!order.customerId) throw new Error('Missing customer');\n}",
+      "badExample": "function processOrder(order: Order): void {\n  // 100+ 行代码，包含验证、计算、折扣、保存等所有逻辑\n  if (!order.items.length) throw new Error('Empty order');\n  // ... 更多代码\n}",
+      "reason": "短函数更容易理解、测试和维护"
+    },
+    {
+      "id": "design-003",
+      "name": "避免深层嵌套",
+      "description": "避免超过 3 层嵌套，使用提前返回、卫语句减少嵌套",
+      "level": "强卡控",
+      "goodExample": "function getUserData(userId: string): UserData | null {\n  if (!userId) return null;\n  \n  const user = findUser(userId);\n  if (!user) return null;\n  \n  if (!user.isActive) return null;\n  \n  return transformUserData(user);\n}",
+      "badExample": "function getUserData(userId: string): UserData | null {\n  if (userId) {\n    const user = findUser(userId);\n    if (user) {\n      if (user.isActive) {\n        return transformUserData(user);\n      } else {\n        return null;\n      }\n    } else {\n      return null;\n    }\n  } else {\n    return null;\n  }\n}",
+      "reason": "减少嵌套提高代码可读性，提前返回使逻辑更清晰"
+    },
+    {
+      "id": "design-004",
+      "name": "魔法数字和字符串",
+      "description": "禁止使用魔法数字和字符串，应定义为常量或枚举",
+      "level": "强卡控",
+      "goodExample": "const MAX_RETRY_COUNT = 3;\nconst RETRY_DELAY = 1000;\nconst STATUS = {\n  PENDING: 'pending',\n  SUCCESS: 'success',\n  ERROR: 'error'\n} as const;\n\nif (retryCount < MAX_RETRY_COUNT) {\n  setTimeout(retry, RETRY_DELAY);\n}",
+      "badExample": "if (retryCount < 3) {\n  setTimeout(retry, 1000);\n}\n\nif (status === 'pending') {\n  // ...\n}",
+      "reason": "使用常量提高代码可读性和可维护性，便于统一修改"
+    },
+    {
+      "id": "design-005",
+      "name": "错误处理规范",
+      "description": "必须处理可能的错误，使用 try-catch 或返回 Result 类型，避免静默失败",
+      "level": "强卡控",
+      "goodExample": "async function fetchUserData(userId: string): Promise<UserData> {\n  try {\n    const response = await api.getUser(userId);\n    return response.data;\n  } catch (error) {\n    console.error('Failed to fetch user:', error);\n    throw new Error(`Failed to fetch user ${userId}`);\n  }\n}\n\n// 或使用 Result 类型\ntype Result<T, E> = { success: true; data: T } | { success: false; error: E };",
+      "badExample": "async function fetchUserData(userId: string): Promise<UserData> {\n  const response = await api.getUser(userId);\n  return response.data;\n}",
+      "reason": "错误处理确保应用稳定性和可调试性"
+    },
+    {
+      "id": "design-006",
+      "name": "代码复用",
+      "description": "避免重复代码，提取公共逻辑为函数或工具类",
+      "level": "建议",
+      "goodExample": "function formatDate(date: Date, format: string): string {\n  return moment(date).format(format);\n}\n\nconst displayDate = formatDate(user.createdAt, 'YYYY-MM-DD');\nconst fullDate = formatDate(order.createdAt, 'YYYY-MM-DD HH:mm:ss');",
+      "badExample": "const displayDate = moment(user.createdAt).format('YYYY-MM-DD');\nconst fullDate = moment(order.createdAt).format('YYYY-MM-DD HH:mm:ss');\nconst reportDate = moment(report.createdAt).format('YYYY-MM-DD');",
+      "reason": "代码复用减少重复，提高可维护性，便于统一修改"
+    },
+    {
+      "id": "design-007",
+      "name": "命名规范",
+      "description": "使用有意义的变量和函数名，避免缩写（除非是通用缩写），使用动词命名函数",
+      "level": "强卡控",
+      "goodExample": "function calculateTotalPrice(items: Item[]): number {\n  const basePrice = items.reduce((sum, item) => sum + item.price, 0);\n  const discountAmount = calculateDiscount(basePrice);\n  return basePrice - discountAmount;\n}\n\nconst userAccountBalance = 1000;",
+      "badExample": "function calc(items: Item[]): number {\n  const bp = items.reduce((sum, item) => sum + item.price, 0);\n  const da = calcDisc(bp);\n  return bp - da;\n}\n\nconst uab = 1000;",
+      "reason": "有意义的命名提高代码可读性，减少理解成本"
+    },
+    {
+      "id": "design-008",
+      "name": "函数参数数量",
+      "description": "函数参数不应超过 3 个，超过时应使用对象参数",
+      "level": "建议",
+      "goodExample": "interface CreateUserParams {\n  name: string;\n  email: string;\n  role: UserRole;\n  department?: string;\n}\n\nfunction createUser(params: CreateUserParams): Promise<User> {\n  return userService.create(params);\n}",
+      "badExample": "function createUser(\n  name: string,\n  email: string,\n  role: UserRole,\n  department: string,\n  phone: string,\n  address: string\n): Promise<User> {\n  return userService.create({ name, email, role, department, phone, address });\n}",
+      "reason": "对象参数提高可读性，便于扩展，参数顺序无关"
+    },
+    {
+      "id": "design-009",
+      "name": "注释规范",
+      "description": "代码应该自解释，仅在必要时添加注释。注释应说明为什么，而不是做什么",
+      "level": "建议",
+      "goodExample": "// 使用二分查找提高大数组的查找性能\nfunction findUser(users: User[], userId: string): User | null {\n  // 实现...\n}\n\n// 缓存 API 响应以避免重复请求（TTL: 5分钟）\nconst cachedData = getCachedData(key);",
+      "badExample": "// 查找用户\nfunction findUser(users: User[], userId: string): User | null {\n  // 遍历数组\n  for (const user of users) {\n    // 如果 ID 匹配\n    if (user.id === userId) {\n      // 返回用户\n      return user;\n    }\n  }\n  // 返回 null\n  return null;\n}",
+      "reason": "好的代码应该自解释，注释应提供代码无法表达的信息"
+    },
+    {
+      "id": "design-010",
+      "name": "副作用管理",
+      "description": "纯函数优先，副作用（API 调用、DOM 操作等）应明确标识和隔离",
+      "level": "建议",
+      "goodExample": "// 纯函数\nfunction calculateTotal(items: Item[]): number {\n  return items.reduce((sum, item) => sum + item.price, 0);\n}\n\n// 副作用函数明确标识\nasync function fetchAndUpdateUser(userId: string): Promise<void> {\n  const user = await api.getUser(userId);\n  updateLocalStorage('currentUser', user);\n  updateUI(user);\n}",
+      "badExample": "function calculateTotal(items: Item[]): number {\n  const total = items.reduce((sum, item) => sum + item.price, 0);\n  localStorage.setItem('lastTotal', String(total)); // 副作用\n  return total;\n}",
+      "reason": "纯函数更容易测试和推理，副作用应该明确标识"
+    },
+    {
+      "id": "design-011",
+      "name": "依赖注入",
+      "description": "避免硬编码依赖，使用依赖注入提高可测试性和灵活性",
+      "level": "建议",
+      "goodExample": "class UserService {\n  constructor(private apiClient: ApiClient) {}\n  \n  async getUser(id: string): Promise<User> {\n    return this.apiClient.get(`/users/${id}`);\n  }\n}\n\n// 测试时可以注入 mock\nconst mockApi = new MockApiClient();\nconst userService = new UserService(mockApi);",
+      "badExample": "class UserService {\n  async getUser(id: string): Promise<User> {\n    return fetch(`https://api.example.com/users/${id}`).then(r => r.json());\n  }\n}",
+      "reason": "依赖注入提高代码的可测试性和灵活性"
+    },
+    {
+      "id": "design-012",
+      "name": "异步处理规范",
+      "description": "统一使用 async/await，避免混用 Promise.then 和 async/await",
+      "level": "建议",
+      "goodExample": "async function processData(): Promise<void> {\n  try {\n    const user = await fetchUser();\n    const orders = await fetchOrders(user.id);\n    await processOrders(orders);\n  } catch (error) {\n    handleError(error);\n  }\n}",
+      "badExample": "function processData(): Promise<void> {\n  return fetchUser()\n    .then(user => fetchOrders(user.id))\n    .then(orders => processOrders(orders))\n    .catch(handleError);\n}\n\n// 或混用\nasync function processData() {\n  fetchUser().then(user => {\n    const orders = await fetchOrders(user.id);\n  });\n}",
+      "reason": "统一的异步处理方式提高代码一致性和可读性"
+    },
+    {
+      "id": "design-013",
+      "name": "数据验证",
+      "description": "在函数入口处验证输入参数，使用类型守卫或验证库",
+      "level": "强卡控",
+      "goodExample": "function createUser(data: unknown): User {\n  if (!isValidUserData(data)) {\n    throw new Error('Invalid user data');\n  }\n  return userRepository.create(data);\n}\n\nfunction isValidUserData(data: unknown): data is UserData {\n  return (\n    typeof data === 'object' &&\n    data !== null &&\n    'name' in data &&\n    'email' in data\n  );\n}",
+      "badExample": "function createUser(data: any): User {\n  return userRepository.create(data);\n}",
+      "reason": "输入验证防止无效数据进入系统，提高系统稳定性"
+    },
+    {
+      "id": "design-014",
+      "name": "避免全局变量",
+      "description": "避免使用全局变量，使用模块导出或依赖注入",
+      "level": "强卡控",
+      "goodExample": "// config.ts\nexport const API_BASE_URL = process.env.API_URL || 'https://api.example.com';\n\n// service.ts\nimport { API_BASE_URL } from './config';\nclass ApiService {\n  private baseUrl = API_BASE_URL;\n}",
+      "badExample": "// 全局变量\nwindow.API_BASE_URL = 'https://api.example.com';\n\n// 或\nvar apiBaseUrl = 'https://api.example.com';",
+      "reason": "全局变量导致代码耦合，难以测试和维护"
+    },
+    {
+      "id": "design-015",
+      "name": "代码组织",
+      "description": "相关代码应该组织在一起，按功能模块划分文件结构",
+      "level": "建议",
+      "goodExample": "// user/\n//   types.ts - 类型定义\n//   api.ts - API 调用\n//   utils.ts - 工具函数\n//   components/\n//     UserCard.tsx\n//     UserList.tsx\n\n// 或按功能\n// features/\n//   user/\n//     index.ts\n//     types.ts\n//     api.ts\n//     components/\n//     hooks/\n//     utils/",
+      "badExample": "// 所有代码混在一个文件\n// utils.ts - 包含用户、订单、商品等所有工具函数\n// components.tsx - 包含所有组件",
+      "reason": "良好的代码组织提高可维护性和可发现性"
+    },
+    {
+      "id": "design-016",
+      "name": "避免过度抽象",
+      "description": "避免过早优化和过度抽象，在需要时再提取公共逻辑",
+      "level": "优化",
+      "goodExample": "// 第一次实现，简单直接\nfunction getUserName(user: User): string {\n  return user.name;\n}\n\n// 当需要处理多种情况时再抽象\nfunction getUserDisplayName(user: User): string {\n  return user.nickname || user.name || 'Unknown';\n}",
+      "badExample": "// 过度抽象，为了抽象而抽象\nfunction getPropertyValue<T, K extends keyof T>(\n  obj: T,\n  key: K,\n  fallback: T[K]\n): T[K] {\n  return obj[key] ?? fallback;\n}\n\nconst name = getPropertyValue(user, 'name', 'Unknown');",
+      "reason": "过度抽象增加复杂度，应该在真正需要时再抽象"
+    },
+    {
+      "id": "design-017",
+      "name": "配置外部化",
+      "description": "将配置信息（API 地址、超时时间等）外部化，避免硬编码",
+      "level": "强卡控",
+      "goodExample": "// config.ts\nexport const config = {\n  apiBaseUrl: process.env.REACT_APP_API_URL || 'https://api.example.com',\n  timeout: Number(process.env.REACT_APP_TIMEOUT) || 5000,\n  maxRetries: Number(process.env.REACT_APP_MAX_RETRIES) || 3\n};\n\n// 使用\nconst response = await fetch(`${config.apiBaseUrl}/users`);",
+      "badExample": "const response = await fetch('https://api.example.com/users');\nsetTimeout(() => {}, 5000);\n// 重试 3 次",
+      "reason": "配置外部化便于不同环境部署和统一管理"
+    },
+    {
+      "id": "design-018",
+      "name": "避免深层对象访问",
+      "description": "避免深层对象属性访问，使用可选链或提供默认值",
+      "level": "建议",
+      "goodExample": "const userName = user?.profile?.name ?? 'Unknown';\nconst orderTotal = order?.items?.reduce((sum, item) => sum + item.price, 0) ?? 0;\n\n// 或使用工具函数\nfunction getNestedValue<T>(obj: any, path: string[], defaultValue: T): T {\n  return path.reduce((current, key) => current?.[key], obj) ?? defaultValue;\n}",
+      "badExample": "const userName = user.profile.name;\nconst orderTotal = order.items.reduce((sum, item) => sum + item.price, 0);",
+      "reason": "深层访问容易导致运行时错误，应该安全访问"
+    },
+    {
+      "id": "design-019",
+      "name": "函数纯度",
+      "description": "优先编写纯函数，纯函数更容易测试和推理",
+      "level": "建议",
+      "goodExample": "// 纯函数：相同输入总是产生相同输出，无副作用\nfunction add(a: number, b: number): number {\n  return a + b;\n}\n\nfunction filterActiveUsers(users: User[]): User[] {\n  return users.filter(user => user.isActive);\n}",
+      "badExample": "let counter = 0;\nfunction add(a: number, b: number): number {\n  counter++; // 副作用\n  return a + b + Math.random(); // 非确定性\n}",
+      "reason": "纯函数更容易测试、调试和推理，提高代码质量"
+    },
+    {
+      "id": "design-020",
+      "name": "代码复杂度控制",
+      "description": "控制代码复杂度，单个函数的圈复杂度不应超过 10",
+      "level": "建议",
+      "goodExample": "function processOrder(order: Order): void {\n  if (!isValidOrder(order)) {\n    handleInvalidOrder(order);\n    return;\n  }\n  \n  if (order.paymentStatus === 'paid') {\n    fulfillOrder(order);\n  } else {\n    requestPayment(order);\n  }\n}\n\nfunction isValidOrder(order: Order): boolean {\n  return order.items.length > 0 && order.customerId != null;\n}",
+      "badExample": "function processOrder(order: Order): void {\n  if (order.items.length > 0) {\n    if (order.customerId != null) {\n      if (order.paymentStatus === 'paid') {\n        if (order.shippingAddress != null) {\n          // 更多嵌套...\n        }\n      }\n    }\n  }\n}",
+      "reason": "控制复杂度提高代码可读性和可维护性"
+    },
+    {
+      "id": "design-021",
+      "name": "文件长度限制",
+      "description": "单个文件最大长度不应超过 400 行，超过时应拆分为多个文件",
+      "level": "强卡控",
+      "goodExample": "// UserService.ts (200行)\nclass UserService {\n  // 用户相关业务逻辑\n}\n\n// UserRepository.ts (150行)\nclass UserRepository {\n  // 用户数据访问逻辑\n}\n\n// UserTypes.ts (50行)\ninterface User {\n  // 类型定义\n}\n\n// 或按功能拆分\n// user/\n//   service.ts\n//   repository.ts\n//   types.ts\n//   utils.ts",
+      "badExample": "// UserManagement.ts (800行)\n// 包含所有用户相关的服务、仓库、类型、工具函数等\nclass UserService {}\nclass UserRepository {}\ninterface User {}\nfunction formatUserName() {}\nfunction validateUserEmail() {}\n// ... 更多代码",
+      "reason": "限制文件长度提高代码可读性、可维护性和可导航性，便于团队协作"
+    }
+  ]
+}
+

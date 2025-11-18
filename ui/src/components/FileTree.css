@@ -1,0 +1,149 @@
+.file-tree {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--bg-primary);
+  border-right: 1px solid var(--border-color);
+}
+
+.file-tree-search {
+  padding: 12px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.file-tree-search-input {
+  width: 100%;
+  padding: 8px 12px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color-light);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-size: 13px;
+  outline: none;
+  transition: all 0.2s;
+}
+
+.file-tree-search-input:focus {
+  border-color: var(--info-color);
+  background: var(--bg-primary);
+}
+
+.file-tree-search-input::placeholder {
+  color: var(--text-tertiary);
+}
+
+.file-tree-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 0;
+}
+
+.file-tree-node {
+  user-select: none;
+}
+
+.file-tree-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  cursor: pointer;
+  color: var(--text-primary);
+  font-size: 13px;
+  transition: all 0.15s;
+  position: relative;
+}
+
+.file-tree-item:hover {
+  background: var(--bg-secondary);
+  color: var(--text-title);
+}
+
+.file-tree-item.active {
+  background: var(--bg-tertiary);
+  color: var(--info-color);
+  border-left: 2px solid var(--info-color);
+}
+
+.file-tree-item.has-errors {
+  border-left: 2px solid var(--error-color);
+}
+
+.file-tree-item.active.has-errors {
+  border-left: 2px solid var(--error-color);
+}
+
+.file-tree-icon {
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.file-tree-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-tree-badges {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.file-badge {
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.file-badge-error {
+  background: var(--error-bg);
+  color: var(--error-color);
+}
+
+.file-badge-warning {
+  background: var(--warning-bg);
+  color: var(--warning-color);
+}
+
+.file-badge-info {
+  background: var(--info-bg);
+  color: var(--info-color);
+}
+
+.file-tree-children {
+  margin-left: 0;
+}
+
+.file-tree-empty {
+  padding: 20px;
+  text-align: center;
+  color: var(--text-tertiary);
+  font-size: 13px;
+}
+
+/* 滚动条样式 */
+.file-tree-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.file-tree-content::-webkit-scrollbar-track {
+  background: var(--bg-primary);
+}
+
+.file-tree-content::-webkit-scrollbar-thumb {
+  background: var(--border-color-light);
+  border-radius: 4px;
+}
+
+.file-tree-content::-webkit-scrollbar-thumb:hover {
+  background: var(--text-tertiary);
+}

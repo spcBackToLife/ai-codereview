@@ -1,0 +1,55 @@
+{
+  "name": "@acr/ai-code-review",
+  "version": "1.0.0",
+  "description": "AI-powered code review tool for automated code review with multiple LLM providers",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "code-review": "./dist/cli.js",
+    "code-review-github": "./dist/cli-github.js"
+  },
+  "files": [
+    "dist",
+    "examples",
+    "README.md",
+    "README-GITHUB.md"
+  ],
+  "scripts": {
+    "build": "tsc && node scripts/postbuild.js",
+    "dev": "tsx src/cli.ts --pwd /Users/kp/Documents/sass/fe.rms-partner",
+    "start:ui": "cd ui && pnpm run dev",
+    "build:ui": "cd ui && pnpm run build",
+    "postinstall": "cd ui && pnpm install"
+  },
+  "keywords": [
+    "code-review",
+    "deepseek",
+    "ai",
+    "git"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.69.0",
+    "chalk": "^5.3.0",
+    "cli-progress": "^3.12.0",
+    "commander": "^11.1.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "inquirer": "^9.2.12",
+    "inquirer-autocomplete-prompt": "^3.0.1",
+    "inquirer-search-list": "^1.2.6",
+    "open": "^10.1.0",
+    "openai": "^6.9.1",
+    "simple-git": "^3.22.0"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/inquirer": "^9.0.7",
+    "@types/node": "^20.10.0",
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.3"
+  }
+}

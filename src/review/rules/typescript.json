@@ -1,0 +1,142 @@
+{
+  "category": "typescript",
+  "name": "TypeScript 代码审查规范",
+  "rules": [
+    {
+      "id": "ts-001",
+      "name": "类型定义规范",
+      "description": "所有函数参数、返回值、变量必须显式声明类型，禁止使用 any，特殊情况使用 unknown",
+      "level": "强卡控",
+      "goodExample": "function getUserInfo(userId: string): Promise<UserInfo> {\n  return api.getUser(userId);\n}\n\nconst count: number = 0;\nconst user: UserInfo | null = null;",
+      "badExample": "function getUserInfo(userId: any): any {\n  return api.getUser(userId);\n}\n\nconst count = 0;\nconst user = null;",
+      "reason": "类型定义可以提高代码可读性和可维护性，减少运行时错误"
+    },
+    {
+      "id": "ts-002",
+      "name": "接口和类型定义",
+      "description": "优先使用 interface 定义对象类型，使用 type 定义联合类型、交叉类型等复杂类型",
+      "level": "建议",
+      "goodExample": "interface UserInfo {\n  id: string;\n  name: string;\n  age: number;\n}\n\ntype Status = 'pending' | 'success' | 'error';\ntype UserWithStatus = UserInfo & { status: Status };",
+      "badExample": "type UserInfo = {\n  id: string;\n  name: string;\n};\n\ninterface Status = 'pending' | 'success';",
+      "reason": "interface 支持声明合并，适合扩展；type 适合复杂类型组合"
+    },
+    {
+      "id": "ts-003",
+      "name": "可选属性使用",
+      "description": "使用 ? 标记可选属性，使用 | undefined 明确表示可能为 undefined",
+      "level": "建议",
+      "goodExample": "interface Config {\n  required: string;\n  optional?: string;\n  explicitUndefined: string | undefined;\n}",
+      "badExample": "interface Config {\n  required: string;\n  optional: string;\n}",
+      "reason": "明确区分可选属性和必填属性，提高类型安全性"
+    },
+    {
+      "id": "ts-004",
+      "name": "泛型使用规范",
+      "description": "合理使用泛型，避免过度使用，泛型参数使用有意义的名称",
+      "level": "建议",
+      "goodExample": "function getValue<T>(key: string): T | null {\n  return storage.get(key) as T | null;\n}\n\ninterface ApiResponse<TData> {\n  code: number;\n  data: TData;\n}",
+      "badExample": "function getValue<T1, T2, T3>(key: string): T1 {\n  return storage.get(key);\n}",
+      "reason": "泛型可以提高代码复用性，但过度使用会增加复杂度"
+    },
+    {
+      "id": "ts-005",
+      "name": "类型断言规范",
+      "description": "优先使用类型守卫，谨慎使用类型断言，禁止使用 as any",
+      "level": "强卡控",
+      "goodExample": "function isString(value: unknown): value is string {\n  return typeof value === 'string';\n}\n\nif (isString(value)) {\n  console.log(value.toUpperCase());\n}\n\nconst data = response as ApiResponse<UserInfo>;",
+      "badExample": "const data = response as any;\nconst value = unknownValue as string;\nconsole.log(value.toUpperCase());",
+      "reason": "类型断言会绕过类型检查，容易引入运行时错误"
+    },
+    {
+      "id": "ts-006",
+      "name": "枚举使用规范",
+      "description": "使用 const enum 或普通 enum，避免使用字符串字面量联合类型替代枚举",
+      "level": "建议",
+      "goodExample": "enum UserRole {\n  Admin = 'admin',\n  User = 'user',\n  Guest = 'guest'\n}\n\nconst enum Status {\n  Pending = 0,\n  Success = 1\n}",
+      "badExample": "type UserRole = 'admin' | 'user' | 'guest';\nconst role: UserRole = 'admin';",
+      "reason": "枚举提供更好的类型提示和重构支持"
+    },
+    {
+      "id": "ts-007",
+      "name": "函数重载规范",
+      "description": "使用函数重载提供更精确的类型定义，避免使用联合类型参数",
+      "level": "优化",
+      "goodExample": "function format(value: string): string;\nfunction format(value: number): string;\nfunction format(value: string | number): string {\n  return String(value);\n}",
+      "badExample": "function format(value: string | number): string {\n  return String(value);\n}",
+      "reason": "函数重载可以提供更精确的类型推断"
+    },
+    {
+      "id": "ts-008",
+      "name": "工具类型使用",
+      "description": "合理使用 TypeScript 内置工具类型（Partial、Pick、Omit、Record 等）",
+      "level": "建议",
+      "goodExample": "type UserUpdate = Partial<UserInfo>;\ntype UserBasic = Pick<UserInfo, 'id' | 'name'>;\ntype UserWithoutId = Omit<UserInfo, 'id'>;\ntype UserMap = Record<string, UserInfo>;",
+      "badExample": "interface UserUpdate {\n  id?: string;\n  name?: string;\n  age?: number;\n}",
+      "reason": "工具类型可以减少重复代码，提高类型定义的灵活性"
+    },
+    {
+      "id": "ts-009",
+      "name": "空值处理",
+      "description": "明确处理 null 和 undefined，使用可选链和空值合并运算符",
+      "level": "强卡控",
+      "goodExample": "const name = user?.profile?.name ?? 'Unknown';\nif (data != null) {\n  processData(data);\n}",
+      "badExample": "const name = user.profile.name;\nif (data) {\n  processData(data);\n}",
+      "reason": "明确处理空值可以避免运行时错误"
+    },
+    {
+      "id": "ts-010",
+      "name": "类型导入规范",
+      "description": "使用 import type 导入类型，避免类型导入影响运行时",
+      "level": "优化",
+      "goodExample": "import type { UserInfo, ApiResponse } from './types';\nimport { getUserInfo } from './api';",
+      "badExample": "import { UserInfo, ApiResponse, getUserInfo } from './api';",
+      "reason": "类型导入在编译后会被移除，不影响打包体积"
+    },
+    {
+      "id": "ts-011",
+      "name": "禁止使用 @ts-ignore",
+      "description": "禁止使用 @ts-ignore 和 @ts-nocheck，应修复类型错误或使用 @ts-expect-error 并说明原因",
+      "level": "强卡控",
+      "goodExample": "// @ts-expect-error: 第三方库类型定义不完整\nconst result = thirdPartyLib.getData();",
+      "badExample": "// @ts-ignore\nconst result = thirdPartyLib.getData();",
+      "reason": "@ts-ignore 会忽略所有错误，@ts-expect-error 只在有错误时生效，更安全"
+    },
+    {
+      "id": "ts-012",
+      "name": "类型导出规范",
+      "description": "导出类型时使用 export type，避免类型和值混用",
+      "level": "建议",
+      "goodExample": "export type { UserInfo, ApiResponse };\nexport { getUserInfo, createUser };",
+      "badExample": "export { UserInfo, ApiResponse, getUserInfo };",
+      "reason": "明确区分类型导出和值导出，提高代码清晰度"
+    },
+    {
+      "id": "ts-013",
+      "name": "readonly 使用",
+      "description": "对于不应被修改的对象和数组，使用 readonly 修饰符",
+      "level": "建议",
+      "goodExample": "interface Config {\n  readonly apiUrl: string;\n  readonly allowedOrigins: readonly string[];\n}",
+      "badExample": "interface Config {\n  apiUrl: string;\n  allowedOrigins: string[];\n}",
+      "reason": "readonly 可以在编译时防止意外修改，提高代码安全性"
+    },
+    {
+      "id": "ts-014",
+      "name": "函数类型定义",
+      "description": "使用函数类型别名或接口定义函数类型，避免重复定义",
+      "level": "建议",
+      "goodExample": "type EventHandler = (event: Event) => void;\ninterface ApiCall {\n  (url: string): Promise<Response>;\n}",
+      "badExample": "function handleClick(event: Event): void {}\nfunction handleSubmit(event: Event): void {}",
+      "reason": "统一的函数类型定义可以提高代码复用性和一致性"
+    },
+    {
+      "id": "ts-015",
+      "name": "类型兼容性",
+      "description": "避免使用类型断言绕过类型检查，优先修复类型定义",
+      "level": "强卡控",
+      "goodExample": "interface User {\n  id: string;\n  name: string;\n}\n\nconst user: User = {\n  id: '1',\n  name: 'John'\n};",
+      "badExample": "const user = {\n  id: '1',\n  name: 'John'\n} as User;\n\nconst data = response as any as UserInfo;",
+      "reason": "类型断言会绕过类型检查，应该通过正确的类型定义来保证类型安全"
+    }
+  ]
+}
+
