@@ -1,6 +1,7 @@
 import OpenAI from 'openai';
 import chalk from 'chalk';
 import type { LLMAdapter, LLMMessage, LLMRequestOptions, LLMResponse } from './base.js';
+import { t } from '../../utils/i18n.js';
 
 /**
  * 自定义 API 模型的最大上下文长度（tokens）
@@ -63,7 +64,7 @@ export class CustomAdapter implements LLMAdapter {
     }
 
     const requestStartTime = Date.now();
-    console.log(chalk.gray(`      [HTTP] 使用 OpenAI SDK 通过自定义 baseURL 发送请求 (${baseUrl}, maxTokens: ${maxTokens})...`));
+    console.log(chalk.gray(`      ${t('adapter.custom.httpCall', { baseUrl, maxTokens })}`));
 
     const client = new OpenAI({
       apiKey,
@@ -79,7 +80,7 @@ export class CustomAdapter implements LLMAdapter {
       });
 
       const requestDuration = Date.now() - requestStartTime;
-      console.log(chalk.gray(`      [HTTP] 请求完成，耗时: ${requestDuration}ms`));
+      console.log(chalk.gray(`      ${t('adapter.custom.apiComplete', { duration: requestDuration })}`));
 
       const content = response.choices[0]?.message?.content || '';
       if (!content) {
@@ -96,15 +97,15 @@ export class CustomAdapter implements LLMAdapter {
       };
     } catch (error) {
       const requestDuration = Date.now() - requestStartTime;
-      console.error(chalk.red(`      [HTTP] 请求失败，耗时: ${requestDuration}ms`));
+      console.error(chalk.red(`      ${t('adapter.custom.requestFailed', { duration: requestDuration })}`));
       
       if (error instanceof OpenAI.APIError) {
-        console.error(chalk.red(`      [HTTP] 错误详情: ${error.status} ${error.message}`));
+        console.error(chalk.red(`      ${t('adapter.custom.errorDetails')} ${error.status} ${error.message}`));
         if (error.error) {
           const errorStr = typeof error.error === 'string' 
             ? error.error 
             : JSON.stringify(error.error);
-          console.error(chalk.red(`      [HTTP] 错误内容: ${errorStr.substring(0, 500)}`));
+          console.error(chalk.red(`      ${t('adapter.custom.errorContent')} ${errorStr.substring(0, 500)}`));
         }
         throw new Error(`Custom API error: ${error.status} ${error.message}`);
       }

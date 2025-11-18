@@ -4,6 +4,7 @@ import { OpenAIAdapter } from './openai.js';
 import { AnthropicAdapter } from './anthropic.js';
 import { MoonshotAdapter } from './moonshot.js';
 import { CustomAdapter } from './custom.js';
+import { t } from '../../utils/i18n.js';
 
 export type LLMProvider = 'openai' | 'anthropic' | 'moonshot' | 'custom';
 
@@ -57,8 +58,8 @@ export async function callLLMAPI(messages: LLMMessage[]): Promise<string> {
     );
   }
 
-  console.log(chalk.gray(`      [配置] 提供商: ${provider}, 模型: ${modelName}`));
-  console.log(chalk.gray(`      [配置] 估算 token 数: ${estimatedTokens}, 最大上下文: ${maxContextLength}, 可用: ${availableTokens}`));
+  console.log(chalk.gray(`      ${t('adapter.config', { provider, model: modelName })}`));
+  console.log(chalk.gray(`      ${t('adapter.tokenEstimate', { estimated: estimatedTokens, max: maxContextLength, available: availableTokens })}`));
 
   const options: LLMRequestOptions = {
     apiKey,
@@ -72,7 +73,7 @@ export async function callLLMAPI(messages: LLMMessage[]): Promise<string> {
   const response = await adapter.call(options);
 
   if (response.usage) {
-    console.log(chalk.gray(`      [统计] Token 使用: 输入=${response.usage.promptTokens}, 输出=${response.usage.completionTokens}, 总计=${response.usage.totalTokens}`));
+    console.log(chalk.gray(`      ${t('adapter.tokenUsage', { input: response.usage.promptTokens || 0, output: response.usage.completionTokens || 0, total: response.usage.totalTokens || 0 })}`));
   }
 
   return response.content;

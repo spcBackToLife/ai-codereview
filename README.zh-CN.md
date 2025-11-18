@@ -1,9 +1,28 @@
-# @acr/ai-code-review
+# @aicodereview/ai-code-review
 
-[![npm version](https://img.shields.io/npm/v/@acr/ai-code-review.svg)](https://www.npmjs.com/package/@acr/ai-code-review)
+[![npm version](https://img.shields.io/npm/v/@aicodereview/ai-code-review.svg)](https://www.npmjs.com/package/@aicodereview/ai-code-review)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
+**语言**: [English](./README.md) | [中文](./README.zh-CN.md)
+
 基于大语言模型（LLM）的 AI 代码审查工具，可自动审查代码变更。支持多种 LLM 提供商，包括 OpenAI、Anthropic、Moonshot 和自定义提供商。
+
+## 📸 截图
+
+### 审查仪表板
+![审查仪表板](./iShot_2025-11-18_20.55.13.png)
+
+### 统计面板
+![统计面板](./iShot_2025-11-18_20.55.55.png)
+
+### 代码审查界面
+![代码审查界面](./iShot_2025-11-18_20.56.05.png)
+
+### 规则统计视图
+![规则统计视图](./iShot_2025-11-18_21.02.44.png)
+
+### 详细审查评论
+![详细审查评论](./iShot_2025-11-18_22.57.45.png)
 
 ## 🌟 功能特性
 
@@ -38,20 +57,20 @@
 ### 全局安装（推荐）
 
 ```bash
-npm install -g @acr/ai-code-review
+npm install -g @aicodereview/ai-code-review
 ```
 
 ### 本地安装
 
 ```bash
-npm install --save-dev @acr/ai-code-review
+npm install --save-dev @aicodereview/ai-code-review
 ```
 
 ### 从源码安装
 
 ```bash
 git clone <repository-url>
-cd code-review-tool
+cd ai-codereview
 npm install
 npm run build
 ```
@@ -306,7 +325,7 @@ npm run dev master
 ### 项目结构
 
 ```
-code-review-tool/
+ai-codereview/
 ├── src/
 │   ├── cli.ts              # 主 CLI 入口
 │   ├── cli-github.ts       # GitHub CLI 入口

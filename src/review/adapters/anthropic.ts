@@ -1,6 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import chalk from 'chalk';
 import type { LLMAdapter, LLMMessage, LLMRequestOptions, LLMResponse } from './base.js';
+import { t } from '../../utils/i18n.js';
 
 /**
  * Anthropic 模型的最大上下文长度（tokens）
@@ -44,7 +45,7 @@ export class AnthropicAdapter implements LLMAdapter {
     } = options;
 
     const requestStartTime = Date.now();
-    console.log(chalk.gray(`      [SDK] 使用 Anthropic SDK 调用 API (maxTokens: ${maxTokens})...`));
+    console.log(chalk.gray(`      ${t('adapter.anthropic.sdkCall', { maxTokens })}`));
 
     const client = new Anthropic({
       apiKey,
@@ -81,7 +82,7 @@ export class AnthropicAdapter implements LLMAdapter {
       const response = await client.messages.create(requestParams);
 
       const requestDuration = Date.now() - requestStartTime;
-      console.log(chalk.gray(`      [SDK] API 调用完成，耗时: ${requestDuration}ms`));
+      console.log(chalk.gray(`      ${t('adapter.apiComplete', { duration: requestDuration })}`));
 
       const content = response.content[0]?.type === 'text' ? response.content[0].text : '';
       if (!content) {
@@ -98,12 +99,12 @@ export class AnthropicAdapter implements LLMAdapter {
       };
     } catch (error) {
       const requestDuration = Date.now() - requestStartTime;
-      console.error(chalk.red(`      [SDK] 请求失败，耗时: ${requestDuration}ms`));
+      console.error(chalk.red(`      ${t('adapter.requestFailed', { duration: requestDuration })}`));
       
       if (error instanceof Anthropic.APIError) {
-        console.error(chalk.red(`      [SDK] 错误详情: ${error.status} ${error.message}`));
+        console.error(chalk.red(`      ${t('adapter.errorDetails')} ${error.status} ${error.message}`));
         if (error.error) {
-          console.error(chalk.red(`      [SDK] 错误内容: ${JSON.stringify(error.error).substring(0, 500)}`));
+          console.error(chalk.red(`      ${t('adapter.errorContent')} ${JSON.stringify(error.error).substring(0, 500)}`));
         }
         throw new Error(`Anthropic API error: ${error.status} ${error.message}`);
       }

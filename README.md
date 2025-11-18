@@ -1,9 +1,28 @@
-# @acr/ai-code-review
+# @aicodereview/ai-code-review
 
-[![npm version](https://img.shields.io/npm/v/@acr/ai-code-review.svg)](https://www.npmjs.com/package/@acr/ai-code-review)
+[![npm version](https://img.shields.io/npm/v/@aicodereview/ai-code-review.svg)](https://www.npmjs.com/package/@aicodereview/ai-code-review)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
+**Language**: [English](./README.md) | [中文](./README.zh-CN.md)
+
 An AI-powered code review tool that automatically reviews code changes using Large Language Models (LLMs). Supports multiple LLM providers including OpenAI, Anthropic, Moonshot, and custom providers.
+
+## 📸 Screenshots
+
+### Review Dashboard
+![Review Dashboard](./iShot_2025-11-18_20.55.13.png)
+
+### Statistics Panel
+![Statistics Panel](./iShot_2025-11-18_20.55.55.png)
+
+### Code Review Interface
+![Code Review Interface](./iShot_2025-11-18_20.56.05.png)
+
+### Rule Statistics View
+![Rule Statistics View](./iShot_2025-11-18_21.02.44.png)
+
+### Detailed Review Comments
+![Detailed Review Comments](./iShot_2025-11-18_22.57.45.png)
 
 ## 🌟 Features
 
@@ -38,20 +57,20 @@ An AI-powered code review tool that automatically reviews code changes using Lar
 ### Global Installation (Recommended)
 
 ```bash
-npm install -g @acr/ai-code-review
+npm install -g @aicodereview/ai-code-review
 ```
 
 ### Local Installation
 
 ```bash
-npm install --save-dev @acr/ai-code-review
+npm install --save-dev @aicodereview/ai-code-review
 ```
 
 ### From Source
 
 ```bash
 git clone <repository-url>
-cd code-review-tool
+cd ai-codereview
 npm install
 npm run build
 ```
@@ -306,7 +325,7 @@ npm run dev master
 ### Project Structure
 
 ```
-code-review-tool/
+ai-codereview/
 ├── src/
 │   ├── cli.ts              # Main CLI entry
 │   ├── cli-github.ts       # GitHub CLI entry

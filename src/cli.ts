@@ -198,21 +198,21 @@ program
       // 如果需要启动服务器
       if (shouldStartServer) {
         // 启动服务器模式：保存完整结果并启动服务器
-        const resultPath = await saveReviewResult({
-          baseBranch: targetBranch,
-          diff,
-          review: reviewResult,
-          timestamp: new Date().toISOString(),
-        });
+      const resultPath = await saveReviewResult({
+        baseBranch: targetBranch,
+        diff,
+        review: reviewResult,
+        timestamp: new Date().toISOString(),
+      });
 
         console.log(chalk.green(`✓ Review result saved to:`));
         console.log(chalk.gray(`   ${resultPath}\n`));
 
-        // 启动服务器
+      // 启动服务器
         console.log(chalk.blue(`🚀 ${t('cli.startingServer')}`));
-        const port = await startServer(resultPath);
-        const url = `http://localhost:${port}`;
-        
+      const port = await startServer(resultPath);
+      const url = `http://localhost:${port}`;
+      
         console.log(chalk.green(`✓ ${t('cli.serverStarted')}\n`));
         console.log(chalk.cyan('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'));
         console.log(chalk.cyan.bold(`📖 Review Report: ${url}`));

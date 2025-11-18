@@ -9,6 +9,7 @@ import path from 'path';
 import cliProgress from 'cli-progress';
 import { callLLMAPI, getLLMAdapter } from './adapters/index.js';
 import type { LLMProvider } from './adapters/index.js';
+import { t, formatDate, formatDuration, getLanguage } from '../utils/i18n.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -145,10 +146,10 @@ async function loadReviewRules(additionalRuleFiles: string[] = []): Promise<{ ru
         rulesText.push(`**错误示例**:\n\`\`\`typescript\n${rule.badExample}\n\`\`\``);
       }
       
-          rulesText.push('');
-        }
-      }
-
+      rulesText.push('');
+    }
+  }
+  
       const finalRulesText = rulesText.join('\n');
       
       // 将规则文本写入日志文件
@@ -200,24 +201,27 @@ async function callLLMAPIWithCompletion(
 ): Promise<string> {
   let fullResponse = '';
   let continuationCount = 0;
-  const batchInfo = batchIndex !== undefined ? `批次 ${batchIndex + 1}` : '';
+  const batchInfo = batchIndex !== undefined ? `${t('review.batchStart', { index: batchIndex + 1 })}` : '';
 
-  console.log(chalk.blue(`  🔄 ${batchInfo} 开始调用 AI API...`));
+  if (batchInfo) {
+    console.log(chalk.blue(`  🔄 ${batchInfo}`));
+  }
 
   while (continuationCount <= maxContinuations) {
     try {
       const callStartTime = Date.now();
-      console.log(chalk.gray(`    ${batchInfo} API 调用 ${continuationCount === 0 ? '（初始）' : `（续写 ${continuationCount}/${maxContinuations}）`}...`));
+      const callType = continuationCount === 0 ? t('review.apiCallInitial') : t('review.apiCallContinuation', { current: continuationCount, max: maxContinuations });
+      console.log(chalk.gray(`    ${batchInfo} ${t('review.apiCall', { type: callType })}`));
       
       const response = await callLLMAPI(messages);
       const callDuration = Date.now() - callStartTime;
       
       fullResponse += response;
-      console.log(chalk.gray(`    ${batchInfo} API 调用完成，耗时 ${callDuration}ms，当前响应长度: ${fullResponse.length} 字符`));
+      console.log(chalk.gray(`    ${batchInfo} ${t('review.apiCallComplete', { duration: callDuration, length: fullResponse.length })}`));
 
       // 检查是否是完整的 JSON
       if (isJSONComplete(fullResponse)) {
-        console.log(chalk.green(`  ✓ ${batchInfo} JSON 输出完整（共 ${continuationCount + 1} 次调用）`));
+        console.log(chalk.green(`  ✓ ${batchInfo} ${t('review.jsonComplete', { count: continuationCount + 1 })}`));
         
         // 写入 fullResponse 到文件
         try {
@@ -226,9 +230,9 @@ async function callLLMAPIWithCompletion(
           const cwd = process.cwd();
           const filePath = path.join(cwd, filename);
           await writeFile(filePath, fullResponse, 'utf-8');
-          console.log(chalk.gray(`    ${batchInfo} AI 响应已保存到: ${filePath}`));
+          console.log(chalk.gray(`    ${batchInfo} ${t('review.responseSaved')} ${filePath}`));
         } catch (writeError) {
-          console.warn(chalk.yellow(`    ⚠️  保存 AI 响应失败: ${writeError instanceof Error ? writeError.message : String(writeError)}`));
+          console.warn(chalk.yellow(`    ⚠️  ${t('review.saveFailed')} ${writeError instanceof Error ? writeError.message : String(writeError)}`));
         }
         
         return fullResponse;
@@ -236,7 +240,7 @@ async function callLLMAPIWithCompletion(
 
       // 如果还没达到最大续写次数，继续请求
       if (continuationCount < maxContinuations) {
-        console.log(chalk.yellow(`    ${batchInfo} JSON 不完整，准备续写（${continuationCount + 1}/${maxContinuations}）...`));
+        console.log(chalk.yellow(`    ${batchInfo} ${t('review.jsonIncomplete', { current: continuationCount + 1, max: maxContinuations })}`));
         // 发送续写请求，包含之前的响应作为上下文
         const last500Chars = fullResponse.slice(-500);
         messages.push({
@@ -245,7 +249,7 @@ async function callLLMAPIWithCompletion(
         });
         messages.push({
           role: 'user',
-          content: `请继续完成上面的 JSON 输出。之前的输出在 "${last500Chars}" 处被截断，请从那里继续输出完整的 JSON。`,
+          content: `Please continue to complete the JSON output above. The previous output was truncated at "${last500Chars}", please continue from there to output the complete JSON.`,
         });
         continuationCount++;
         
@@ -253,7 +257,7 @@ async function callLLMAPIWithCompletion(
         await new Promise(resolve => setTimeout(resolve, 100));
       } else {
         // 达到最大续写次数，返回当前结果（可能不完整）
-        console.warn(chalk.yellow(`  ⚠️  ${batchInfo} 达到最大续写次数 ${maxContinuations}，JSON 可能不完整`));
+        console.warn(chalk.yellow(`  ⚠️  ${batchInfo} ${t('review.maxContinuations', { max: maxContinuations })}`));
         
         // 即使不完整也写入文件
         try {
@@ -262,16 +266,16 @@ async function callLLMAPIWithCompletion(
           const cwd = process.cwd();
           const filePath = path.join(cwd, filename);
           await writeFile(filePath, fullResponse, 'utf-8');
-          console.log(chalk.gray(`    ${batchInfo} AI 响应（不完整）已保存到: ${filePath}`));
+          console.log(chalk.gray(`    ${batchInfo} ${t('review.responseSaved')} ${filePath} (incomplete)`));
         } catch (writeError) {
-          console.warn(chalk.yellow(`    ⚠️  保存 AI 响应失败: ${writeError instanceof Error ? writeError.message : String(writeError)}`));
-        }
-        
+          console.warn(chalk.yellow(`    ⚠️  ${t('review.saveFailed')} ${writeError instanceof Error ? writeError.message : String(writeError)}`));
+  }
+
         return fullResponse;
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      console.error(chalk.red(`    ❌ ${batchInfo} API 调用失败: ${errorMessage}`));
+      console.error(chalk.red(`    ❌ ${batchInfo} ${t('review.apiCallFailed')} ${errorMessage}`));
       throw error;
     }
   }
@@ -342,7 +346,7 @@ function parseReviewResult(aiResponse: string, fileDiffs: FileDiff[], rulesMap: 
             console.warn('⚠️  Extracted JSON from markdown code block (AI should return pure JSON)');
             return {
               comments: parsed.comments,
-              summary: parsed.summary || '代码审查完成',
+              summary: parsed.summary || t('error.defaultSummary'),
             };
           }
         } catch (parseError) {
@@ -384,16 +388,16 @@ function parseReviewResult(aiResponse: string, fileDiffs: FileDiff[], rulesMap: 
             } else if (comment.ruleId) {
               // 如果 ruleId 存在但规则未找到，使用提供的值或设置默认值
               normalized.ruleId = comment.ruleId;
-              normalized.ruleName = comment.ruleName || '未知规则';
-              normalized.ruleLevel = comment.ruleLevel || '建议';
-              normalized.ruleDesc = comment.ruleDesc || '规则信息缺失';
+              normalized.ruleName = comment.ruleName || t('error.unknownRule');
+              normalized.ruleLevel = comment.ruleLevel || t('error.suggestion');
+              normalized.ruleDesc = comment.ruleDesc || t('error.ruleInfoMissing');
               console.warn(`⚠️  Rule not found for ruleId: ${comment.ruleId}`);
             } else {
               // 如果完全没有规则信息，设置默认值
               normalized.ruleId = 'unknown';
-              normalized.ruleName = '未知规则';
-              normalized.ruleLevel = '建议';
-              normalized.ruleDesc = '规则信息缺失';
+              normalized.ruleName = t('error.unknownRule');
+              normalized.ruleLevel = t('error.suggestion');
+              normalized.ruleDesc = t('error.ruleInfoMissing');
               console.warn('⚠️  Comment missing ruleId, using default values');
             }
             
@@ -430,16 +434,16 @@ function parseReviewResult(aiResponse: string, fileDiffs: FileDiff[], rulesMap: 
             } else if (comment.ruleId) {
               // 如果 ruleId 存在但规则未找到，使用提供的值或设置默认值
               normalized.ruleId = comment.ruleId;
-              normalized.ruleName = comment.ruleName || '未知规则';
-              normalized.ruleLevel = comment.ruleLevel || '建议';
-              normalized.ruleDesc = comment.ruleDesc || '规则信息缺失';
+              normalized.ruleName = comment.ruleName || t('error.unknownRule');
+              normalized.ruleLevel = comment.ruleLevel || t('error.suggestion');
+              normalized.ruleDesc = comment.ruleDesc || t('error.ruleInfoMissing');
               console.warn(`⚠️  Rule not found for ruleId: ${comment.ruleId}`);
             } else {
               // 如果完全没有规则信息，设置默认值
               normalized.ruleId = 'unknown';
-              normalized.ruleName = '未知规则';
-              normalized.ruleLevel = '建议';
-              normalized.ruleDesc = '规则信息缺失';
+              normalized.ruleName = t('error.unknownRule');
+              normalized.ruleLevel = t('error.suggestion');
+              normalized.ruleDesc = t('error.ruleInfoMissing');
               console.warn('⚠️  Comment missing ruleId, using default values');
             }
             
@@ -484,16 +488,16 @@ function parseReviewResult(aiResponse: string, fileDiffs: FileDiff[], rulesMap: 
             } else if (comment.ruleId) {
               // 如果 ruleId 存在但规则未找到，使用提供的值或设置默认值
               normalized.ruleId = comment.ruleId;
-              normalized.ruleName = comment.ruleName || '未知规则';
-              normalized.ruleLevel = comment.ruleLevel || '建议';
-              normalized.ruleDesc = comment.ruleDesc || '规则信息缺失';
+              normalized.ruleName = comment.ruleName || t('error.unknownRule');
+              normalized.ruleLevel = comment.ruleLevel || t('error.suggestion');
+              normalized.ruleDesc = comment.ruleDesc || t('error.ruleInfoMissing');
               console.warn(`⚠️  Rule not found for ruleId: ${comment.ruleId}`);
             } else {
               // 如果完全没有规则信息，设置默认值
               normalized.ruleId = 'unknown';
-              normalized.ruleName = '未知规则';
-              normalized.ruleLevel = '建议';
-              normalized.ruleDesc = '规则信息缺失';
+              normalized.ruleName = t('error.unknownRule');
+              normalized.ruleLevel = t('error.suggestion');
+              normalized.ruleDesc = t('error.ruleInfoMissing');
               console.warn('⚠️  Comment missing ruleId, using default values');
             }
             
@@ -514,8 +518,8 @@ function parseReviewResult(aiResponse: string, fileDiffs: FileDiff[], rulesMap: 
     const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
       try {
-        const parsed = JSON.parse(jsonMatch[0]);
-        if (parsed.comments && Array.isArray(parsed.comments)) {
+      const parsed = JSON.parse(jsonMatch[0]);
+      if (parsed.comments && Array.isArray(parsed.comments)) {
           // 规范化评论数据：确保所有必需字段都存在
           const normalizedComments = parsed.comments.map((comment: any) => {
             const normalized: any = {
@@ -533,26 +537,26 @@ function parseReviewResult(aiResponse: string, fileDiffs: FileDiff[], rulesMap: 
             } else if (comment.ruleId) {
               // 如果 ruleId 存在但规则未找到，使用提供的值或设置默认值
               normalized.ruleId = comment.ruleId;
-              normalized.ruleName = comment.ruleName || '未知规则';
-              normalized.ruleLevel = comment.ruleLevel || '建议';
-              normalized.ruleDesc = comment.ruleDesc || '规则信息缺失';
+              normalized.ruleName = comment.ruleName || t('error.unknownRule');
+              normalized.ruleLevel = comment.ruleLevel || t('error.suggestion');
+              normalized.ruleDesc = comment.ruleDesc || t('error.ruleInfoMissing');
               console.warn(`⚠️  Rule not found for ruleId: ${comment.ruleId}`);
             } else {
               // 如果完全没有规则信息，设置默认值
               normalized.ruleId = 'unknown';
-              normalized.ruleName = '未知规则';
-              normalized.ruleLevel = '建议';
-              normalized.ruleDesc = '规则信息缺失';
+              normalized.ruleName = t('error.unknownRule');
+              normalized.ruleLevel = t('error.suggestion');
+              normalized.ruleDesc = t('error.ruleInfoMissing');
               console.warn('⚠️  Comment missing ruleId, using default values');
             }
             
             return normalized;
           });
           
-          return {
+        return {
             comments: normalizedComments,
-            summary: parsed.summary || '代码审查完成',
-          };
+          summary: parsed.summary || '代码审查完成',
+        };
         }
       } catch (parseError) {
         console.warn('Failed to parse JSON with regex:', parseError instanceof Error ? parseError.message : String(parseError));
@@ -569,7 +573,7 @@ function parseReviewResult(aiResponse: string, fileDiffs: FileDiff[], rulesMap: 
   
   for (const line of lines) {
     // 简单的启发式规则提取评论
-    if (line.includes('错误') || line.includes('error') || line.includes('Error')) {
+    if (line.includes('error') || line.includes('Error')) {
       // 尝试提取文件路径和行号
       const fileMatch = line.match(/([^\s]+\.(ts|tsx|js|jsx)):(\d+)/);
       if (fileMatch) {
@@ -581,9 +585,9 @@ function parseReviewResult(aiResponse: string, fileDiffs: FileDiff[], rulesMap: 
           severity: 'error',
           message: line,
           ruleId: 'unknown',
-          ruleName: '未知规则',
-          ruleLevel: '建议',
-          ruleDesc: '规则信息缺失',
+          ruleName: t('error.unknownRule'),
+          ruleLevel: t('error.suggestion'),
+          ruleDesc: t('error.ruleInfoMissing'),
         });
       }
     }
@@ -594,9 +598,9 @@ function parseReviewResult(aiResponse: string, fileDiffs: FileDiff[], rulesMap: 
     // 检查是否是 JSON 格式问题
     const hasJsonStart = aiResponse.trim().startsWith('{') || aiResponse.includes('```json') || aiResponse.includes('```');
     if (hasJsonStart) {
-      throw new Error('无法解析 AI 返回的 JSON 响应。响应可能包含无效的 JSON 格式或控制字符。');
+      throw new Error(t('error.cannotParseJSON'));
     } else {
-      throw new Error('AI 返回的响应不是有效的 JSON 格式。响应应该以 "{" 开头。');
+      throw new Error(t('error.invalidJSON'));
     }
   }
 
@@ -661,7 +665,7 @@ function splitFilesIntoBatches(
   const reservedTokens = maxTokens + 1000;
   const maxContextTokens = maxContextLength - reservedTokens;
   
-  console.log(chalk.gray(`  📊 模型上下文限制: ${maxContextLength} tokens, 预留: ${reservedTokens} tokens, 可用: ${maxContextTokens} tokens`));
+  console.log(chalk.gray(`  📊 ${t('model.contextLimit', { limit: maxContextLength, reserved: reservedTokens, available: maxContextTokens })}`));
   const batches: FileDiff[][] = [];
   let currentBatch: FileDiff[] = [];
   let currentBatchTokens = estimateTokens(systemPrompt) + estimateTokens(rulesText);
@@ -679,7 +683,7 @@ function splitFilesIntoBatches(
         currentBatch = [];
         currentBatchTokens = estimateTokens(systemPrompt) + estimateTokens(rulesText) + 500;
       }
-      console.warn(chalk.yellow(`  ⚠️  文件 ${fileDiff.filePath} 的 token 数 (${fileTokens}) 超过单批次限制 (${maxContextTokens})，将单独处理`));
+      console.warn(chalk.yellow(`  ⚠️  ${t('model.fileExceedsLimit', { file: fileDiff.filePath, tokens: fileTokens, limit: maxContextTokens })}`));
       batches.push([fileDiff]);
       continue;
     }
@@ -864,13 +868,13 @@ async function reviewFileBatch(
   
   // 显示批次信息
   const batchFileNames = fileBatch.map(f => f.filePath).join(', ');
-  console.log(chalk.gray(`\n📦 批次 ${batchIndex + 1}/${totalBatches} (${fileBatch.length} 个文件)`));
-  console.log(chalk.gray(`   文件: ${batchFileNames}`));
+  console.log(chalk.gray(`\n📦 ${t('review.batchInfo', { current: batchIndex + 1, total: totalBatches, count: fileBatch.length })}`));
+  console.log(chalk.gray(`   ${t('review.files')} ${batchFileNames}`));
   
   // 启动 loading 效果
   const spinnerChars = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
   let spinnerIndex = 0;
-  const loadingText = `正在审查批次 ${batchIndex + 1}/${totalBatches}...`;
+  const loadingText = t('review.reviewingBatch', { current: batchIndex + 1, total: totalBatches });
   
   const spinnerInterval = setInterval(() => {
     spinnerIndex = (spinnerIndex + 1) % spinnerChars.length;
@@ -893,33 +897,36 @@ async function reviewFileBatch(
     ];
     
     // 调用 API 并确保 JSON 完整（最多续写 maxContinuations 次）
-    console.log(chalk.blue(`  📡 ${batchIndex + 1}/${totalBatches} 开始调用 AI API...`));
+    console.log(chalk.blue(`  📡 ${batchIndex + 1}/${totalBatches} ${t('review.batchStart', { index: batchIndex + 1 })}`));
     const apiStartTime = Date.now();
     const aiResponse = await callLLMAPIWithCompletion(messages, maxContinuations, batchIndex);
     const apiDuration = Date.now() - apiStartTime;
-    console.log(chalk.gray(`  ⏱️  ${batchIndex + 1}/${totalBatches} AI API 调用总耗时: ${apiDuration}ms`));
+    console.log(chalk.gray(`  ⏱️  ${batchIndex + 1}/${totalBatches} ${t('review.apiCallTotalDuration', { duration: apiDuration })}`));
     
     // 解析结果
-    console.log(chalk.blue(`  🔍 ${batchIndex + 1}/${totalBatches} 开始解析 JSON 结果...`));
+    console.log(chalk.blue(`  🔍 ${batchIndex + 1}/${totalBatches} ${t('review.parsingJSON')}`));
     const parseStartTime = Date.now();
     let result: ReviewResult;
     try {
       result = parseReviewResult(aiResponse, fileBatch, rulesMap);
     } catch (parseError) {
       const parseDuration = Date.now() - parseStartTime;
-      console.error(chalk.red(`  ❌ ${batchIndex + 1}/${totalBatches} JSON 解析失败，耗时: ${parseDuration}ms`));
-      console.error(chalk.red(`  错误: ${parseError instanceof Error ? parseError.message : String(parseError)}`));
-      throw new Error(`批次 ${batchIndex + 1} JSON 解析失败: ${parseError instanceof Error ? parseError.message : String(parseError)}`);
+      console.error(chalk.red(`  ❌ ${batchIndex + 1}/${totalBatches} ${t('review.jsonParseFailed', { duration: parseDuration })}`));
+      console.error(chalk.red(`  ${t('review.parseError')} ${parseError instanceof Error ? parseError.message : String(parseError)}`));
+      throw new Error(t('error.maxContinuationsNoComments', { batch: batchIndex + 1 }));
     }
     const parseDuration = Date.now() - parseStartTime;
-    console.log(chalk.gray(`  ⏱️  ${batchIndex + 1}/${totalBatches} JSON 解析耗时: ${parseDuration}ms`));
+    console.log(chalk.gray(`  ⏱️  ${batchIndex + 1}/${totalBatches} ${t('review.jsonParseDuration', { duration: parseDuration })}`));
     
     // 检查是否达到最大续写次数但 JSON 仍不完整（通过检查响应中是否有警告信息）
-    if (aiResponse.includes('达到最大续写次数') || aiResponse.includes('JSON 可能不完整')) {
+    const lang = getLanguage();
+    const maxContinuationsText = lang === 'zh-CN' ? '达到最大续写次数' : 'Reached maximum continuation attempts';
+    const jsonIncompleteText = lang === 'zh-CN' ? 'JSON 可能不完整' : 'JSON may be incomplete';
+    if (aiResponse.includes(maxContinuationsText) || aiResponse.includes(jsonIncompleteText)) {
       if (result.comments.length === 0) {
-        throw new Error(`批次 ${batchIndex + 1} 达到最大续写次数但 JSON 仍不完整，且未解析出任何评论`);
+        throw new Error(t('error.maxContinuationsNoComments', { batch: batchIndex + 1 }));
       } else {
-        console.warn(chalk.yellow(`  ⚠️  批次 ${batchIndex + 1} JSON 可能不完整，但已解析出 ${result.comments.length} 个评论`));
+        console.warn(chalk.yellow(`  ⚠️  ${t('error.jsonIncompleteButParsed', { batch: batchIndex + 1, count: result.comments.length })}`));
       }
     }
     
@@ -928,7 +935,7 @@ async function reviewFileBatch(
     
     // 更新进度条（移除 loading 效果）
     progressBar.update(processedFilesRef.current, {
-      currentFile: `批次 ${batchIndex + 1} 完成`,
+      currentFile: t('review.batchCompleteLabel', { current: batchIndex + 1 }),
     });
     
     // 输出批次执行结果
@@ -936,8 +943,8 @@ async function reviewFileBatch(
     const warningCount = result.comments.filter(c => c.severity === 'warning').length;
     const infoCount = result.comments.filter(c => c.severity === 'info').length;
     
-    console.log(chalk.green(`  ✓ 批次 ${batchIndex + 1}/${totalBatches} 完成，发现 ${result.comments.length} 个评论 (${errorCount} 错误, ${warningCount} 警告, ${infoCount} 信息)`));
-    console.log(chalk.gray(`   已审查文件: ${batchFileNames}`));
+    console.log(chalk.green(`  ✓ ${t('review.batchComplete', { current: batchIndex + 1, total: totalBatches, count: result.comments.length, errors: errorCount, warnings: warningCount, info: infoCount })}`));
+    console.log(chalk.gray(`   ${t('review.reviewedFiles')} ${batchFileNames}`));
     
     return {
       comments: result.comments,
@@ -946,7 +953,7 @@ async function reviewFileBatch(
   } catch (error) {
     // 批次执行失败
     const errorMessage = error instanceof Error ? error.message : String(error);
-    console.error(chalk.red(`  ❌ 批次 ${batchIndex + 1}/${totalBatches} 执行失败: ${errorMessage}`));
+    console.error(chalk.red(`  ❌ ${t('review.batchFailed', { current: batchIndex + 1, total: totalBatches })} ${errorMessage}`));
     
     return {
       comments: [],
@@ -973,20 +980,6 @@ function filterReviewFiles(fileDiffs: FileDiff[]): FileDiff[] {
   });
 }
 
-/**
- * 格式化耗时（毫秒转可读格式）
- */
-function formatDuration(ms: number): string {
-  if (ms < 1000) {
-    return `${ms}ms`;
-  } else if (ms < 60000) {
-    return `${(ms / 1000).toFixed(2)}s`;
-  } else {
-    const minutes = Math.floor(ms / 60000);
-    const seconds = ((ms % 60000) / 1000).toFixed(2);
-    return `${minutes}m ${seconds}s`;
-  }
-}
 
 /**
  * 对代码进行审查（按文件逐个审查，支持进度显示）
@@ -995,7 +988,7 @@ export async function reviewCode(fileDiffs: FileDiff[], additionalRuleFiles: str
   // 记录开始时间
   const startTime = new Date();
   const startTimeISO = startTime.toISOString();
-  console.log(chalk.blue(`\n🚀 代码审查开始时间: ${startTime.toLocaleString('zh-CN')}`));
+  console.log(chalk.blue(`\n🚀 ${t('review.startTime')} ${formatDate(startTime)}`));
   
   // 过滤文件，只审查 ts、tsx 文件
   const filteredFileDiffs = filterReviewFiles(fileDiffs);
@@ -1003,13 +996,14 @@ export async function reviewCode(fileDiffs: FileDiff[], additionalRuleFiles: str
   if (filteredFileDiffs.length === 0) {
     const skippedCount = fileDiffs.length - filteredFileDiffs.length;
     if (fileDiffs.length > 0) {
-      console.log(chalk.yellow(`⚠️  已过滤 ${fileDiffs.length} 个文件（只审查 .ts 和 .tsx 文件）`));
+      console.log(chalk.yellow(`⚠️  ${t('review.filteredFiles', { count: fileDiffs.length })}`));
     }
     const endTime = new Date();
     const duration = endTime.getTime() - startTime.getTime();
+    const lang = getLanguage();
     return {
       comments: [],
-      summary: '没有需要审查的代码变更（已过滤非 TypeScript 文件）',
+      summary: t('error.noCodeChanges'),
       startTime: startTimeISO,
       endTime: endTime.toISOString(),
       duration,
@@ -1019,35 +1013,38 @@ export async function reviewCode(fileDiffs: FileDiff[], additionalRuleFiles: str
   // 如果有文件被过滤，显示提示
   if (filteredFileDiffs.length < fileDiffs.length) {
     const skippedCount = fileDiffs.length - filteredFileDiffs.length;
-    console.log(chalk.gray(`📝 已过滤 ${skippedCount} 个非 TypeScript 文件，将审查 ${filteredFileDiffs.length} 个文件\n`));
+    console.log(chalk.gray(`📝 ${t('review.filteredNonTS', { skipped: skippedCount, count: filteredFileDiffs.length })}\n`));
   }
 
   // 加载审查规范
-  console.log(chalk.blue('📚 加载审查规范...'));
+  console.log(chalk.blue(`📚 ${t('review.loadingRules')}`));
   const loadRulesStartTime = Date.now();
   const { rulesText, rulesMap } = await loadReviewRules(additionalRuleFiles);
   const loadRulesDuration = Date.now() - loadRulesStartTime;
-  console.log(chalk.gray(`  ✓ 审查规范加载完成，耗时: ${formatDuration(loadRulesDuration)}`));
+  console.log(chalk.gray(`  ✓ ${t('review.rulesLoaded', { duration: formatDuration(loadRulesDuration) })}`));
   
   // 构建系统提示词
-  console.log(chalk.blue('🔧 构建系统提示词...'));
+  console.log(chalk.blue(`🔧 ${t('review.buildingSystemPrompt')}`));
   const systemPrompt = buildSystemPrompt();
   
   // 将文件拆分成多个批次（根据上下文大小）
-  console.log(chalk.blue('📦 拆分文件批次...'));
+  console.log(chalk.blue(`📦 ${t('review.splittingBatches')}`));
   const batches = splitFilesIntoBatches(filteredFileDiffs, rulesText, systemPrompt);
-  console.log(chalk.blue(`\n📋 开始代码审查：共 ${filteredFileDiffs.length} 个文件，分为 ${batches.length} 个批次\n`));
+  console.log(chalk.blue(`\n📋 ${t('review.startingReview', { files: filteredFileDiffs.length, batches: batches.length })}\n`));
   
   // 创建进度条（总体进度）
+  const lang = getLanguage();
+  const fileLabel = lang === 'zh-CN' ? '文件' : 'files';
+  const currentLabel = lang === 'zh-CN' ? '当前' : 'Current';
   const progressBar = new cliProgress.SingleBar({
-    format: chalk.cyan('{bar}') + ' | {percentage}% | {value}/{total} 文件 | 当前: {currentFile}',
+    format: chalk.cyan('{bar}') + ` | {percentage}% | {value}/{total} ${fileLabel} | ${currentLabel}: {currentFile}`,
     barCompleteChar: '\u2588',
     barIncompleteChar: '\u2591',
     hideCursor: true,
   });
   
   progressBar.start(filteredFileDiffs.length, 0, {
-    currentFile: '准备中...',
+    currentFile: t('review.preparing'),
   });
   
   // 全局评论数组
@@ -1063,13 +1060,13 @@ export async function reviewCode(fileDiffs: FileDiff[], additionalRuleFiles: str
   const failedBatches: FailedBatch[] = [];
   
   // 逐个批次审查
-  console.log(chalk.blue('🔄 开始批次审查...\n'));
+  console.log(chalk.blue(`🔄 ${t('review.startingBatchReview')}\n`));
   for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
     const batch = batches[batchIndex];
     const batchStartTime = Date.now();
     
     console.log(chalk.cyan(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`));
-    console.log(chalk.cyan(`批次 ${batchIndex + 1}/${batches.length} 开始审查 (${batch.length} 个文件)`));
+    console.log(chalk.cyan(`${t('review.batchStartReview', { current: batchIndex + 1, total: batches.length, count: batch.length })}`));
     console.log(chalk.cyan(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`));
     
     // 审查当前批次
@@ -1091,31 +1088,31 @@ export async function reviewCode(fileDiffs: FileDiff[], additionalRuleFiles: str
     if (result.success) {
       // 批次成功，添加评论
       allComments.push(...result.comments);
-      console.log(chalk.green(`✓ 批次 ${batchIndex + 1}/${batches.length} 审查成功，耗时: ${formatDuration(batchDuration)}\n`));
+      console.log(chalk.green(`✓ ${t('review.batchSuccess', { current: batchIndex + 1, total: batches.length, duration: formatDuration(batchDuration) })}\n`));
     } else {
       // 批次失败，记录失败信息，继续下一个批次
-      console.error(chalk.red(`✗ 批次 ${batchIndex + 1}/${batches.length} 审查失败，耗时: ${formatDuration(batchDuration)}`));
-      console.error(chalk.red(`  失败原因: ${result.error || '未知错误'}\n`));
+      console.error(chalk.red(`✗ ${t('review.batchFailedWithDuration', { current: batchIndex + 1, total: batches.length, duration: formatDuration(batchDuration) })}`));
+      console.error(chalk.red(`  ${t('review.failureReason')} ${result.error || t('review.unknownError')}\n`));
       failedBatches.push({
         batchIndex,
         batch,
-        error: result.error || '未知错误',
+        error: result.error || t('review.unknownError'),
       });
     }
   }
   
   // 如果有失败的批次，再试一次
   if (failedBatches.length > 0) {
-    console.log(chalk.yellow(`\n⚠️  有 ${failedBatches.length} 个批次执行失败，开始重试...\n`));
+    console.log(chalk.yellow(`\n⚠️  ${t('review.retryingFailedBatches', { count: failedBatches.length })}\n`));
     
     for (let retryIndex = 0; retryIndex < failedBatches.length; retryIndex++) {
       const failedBatch = failedBatches[retryIndex];
       const retryStartTime = Date.now();
       
       console.log(chalk.cyan(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`));
-      console.log(chalk.cyan(`🔄 重试批次 ${failedBatch.batchIndex + 1}/${batches.length} (${failedBatch.batch.length} 个文件)`));
+      console.log(chalk.cyan(`${t('review.retryingBatch', { current: failedBatch.batchIndex + 1, total: batches.length, count: failedBatch.batch.length })}`));
       console.log(chalk.cyan(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`));
-      console.log(chalk.yellow(`  上次失败原因: ${failedBatch.error}`));
+      console.log(chalk.yellow(`  ${t('review.lastFailureReason')} ${failedBatch.error}`));
       
       const retryResult = await reviewFileBatch(
         failedBatch.batch,
@@ -1135,12 +1132,12 @@ export async function reviewCode(fileDiffs: FileDiff[], additionalRuleFiles: str
       if (retryResult.success) {
         // 重试成功
         allComments.push(...retryResult.comments);
-        console.log(chalk.green(`✓ 批次 ${failedBatch.batchIndex + 1} 重试成功，耗时: ${formatDuration(retryDuration)}\n`));
+        console.log(chalk.green(`✓ ${t('review.retrySuccess', { current: failedBatch.batchIndex + 1, duration: formatDuration(retryDuration) })}\n`));
       } else {
         // 重试仍然失败，标记文件失败
-        console.error(chalk.red(`✗ 批次 ${failedBatch.batchIndex + 1} 重试仍然失败，耗时: ${formatDuration(retryDuration)}`));
-        console.error(chalk.red(`  失败原因: ${retryResult.error || failedBatch.error}`));
-        console.error(chalk.red(`  失败文件: ${failedBatch.batch.map(f => f.filePath).join(', ')}\n`));
+        console.error(chalk.red(`✗ ${t('review.retryFailed', { current: failedBatch.batchIndex + 1, duration: formatDuration(retryDuration) })}`));
+        console.error(chalk.red(`  ${t('review.failureReason')} ${retryResult.error || failedBatch.error}`));
+        console.error(chalk.red(`  ${t('review.failedFiles')} ${failedBatch.batch.map(f => f.filePath).join(', ')}\n`));
       }
     }
   }
@@ -1158,27 +1155,27 @@ export async function reviewCode(fileDiffs: FileDiff[], additionalRuleFiles: str
   const warningCount = allComments.filter(c => c.severity === 'warning').length;
   const infoCount = allComments.filter(c => c.severity === 'info').length;
   
-  const summary = `代码审查完成。共审查 ${filteredFileDiffs.length} 个文件，发现 ${allComments.length} 个问题：${errorCount} 个错误，${warningCount} 个警告，${infoCount} 个建议。`;
+  const summary = t('review.summary', { files: filteredFileDiffs.length, total: allComments.length, errors: errorCount, warnings: warningCount, info: infoCount });
   
   console.log(chalk.cyan(`\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`));
-  console.log(chalk.green(`✅ 审查完成！`));
+  console.log(chalk.green(`✅ ${t('review.reviewComplete')}`));
   console.log(chalk.cyan(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`));
-  console.log(chalk.gray(`   开始时间: ${startTime.toLocaleString('zh-CN')}`));
-  console.log(chalk.gray(`   结束时间: ${endTime.toLocaleString('zh-CN')}`));
-  console.log(chalk.gray(`   总耗时: ${formatDuration(duration)}`));
-  console.log(chalk.gray(`   总文件数: ${filteredFileDiffs.length}`));
-  console.log(chalk.gray(`   总评论数: ${allComments.length}`));
+  console.log(chalk.gray(`   ${t('review.startTimeLabel')} ${formatDate(startTime)}`));
+  console.log(chalk.gray(`   ${t('review.endTimeLabel')} ${formatDate(endTime)}`));
+  console.log(chalk.gray(`   ${t('review.duration')} ${formatDuration(duration)}`));
+  console.log(chalk.gray(`   ${t('review.totalFiles')} ${filteredFileDiffs.length}`));
+  console.log(chalk.gray(`   ${t('review.totalComments')} ${allComments.length}`));
   if (errorCount > 0) {
-    console.log(chalk.red(`   错误: ${errorCount}`));
+    console.log(chalk.red(`   ${t('cli.errors', { count: errorCount })}`));
   }
   if (warningCount > 0) {
-    console.log(chalk.yellow(`   警告: ${warningCount}`));
+    console.log(chalk.yellow(`   ${t('cli.warnings', { count: warningCount })}`));
   }
   if (infoCount > 0) {
-    console.log(chalk.blue(`   建议: ${infoCount}`));
+    console.log(chalk.blue(`   ${t('cli.info', { count: infoCount })}`));
   }
   if (failedBatches.length > 0) {
-    console.log(chalk.red(`   失败批次: ${failedBatches.length}`));
+    console.log(chalk.red(`   ${t('review.failedBatches')} ${failedBatches.length}`));
   }
   console.log(chalk.cyan(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`));
   

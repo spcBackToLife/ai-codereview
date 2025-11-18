@@ -9,7 +9,7 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-echo -e "${BLUE}🚀 Starting release process for code-review-tool...${NC}\n"
+echo -e "${BLUE}🚀 Starting release process for ai-codereview...${NC}\n"
 
 # 检查当前分支
 echo -e "${BLUE}Checking current branch...${NC}"
@@ -92,21 +92,37 @@ echo -e "${BLUE}Building UI...${NC}"
 pnpm run build:ui || exit 1
 echo -e "${GREEN}✓ UI built successfully${NC}\n"
 
-# 读取当前版本
-current_version=$(node -p "require('./package.json').version")
-echo -e "${BLUE}Current version: ${current_version}${NC}"
-
-# 询问新版本号
-read -p "Enter new version (current: $current_version, or press Enter to keep current): " new_version
-if [ -z "$new_version" ]; then
-    new_version=$current_version
-fi
-
-# 更新版本号
-if [ "$new_version" != "$current_version" ]; then
-    echo -e "${BLUE}Updating version to ${new_version}...${NC}"
-    npm version "$new_version" --no-git-tag-version || exit 1
-    echo -e "${GREEN}✓ Version updated to ${new_version}${NC}\n"
+# 检查是否有 changeset
+if [ -d ".changeset" ] && [ -n "$(ls -A .changeset/*.md 2>/dev/null | grep -v README 2>/dev/null)" ]; then
+    echo -e "${BLUE}Found changesets, applying version bump...${NC}"
+    pnpm run version || exit 1
+    echo -e "${GREEN}✓ Version updated and CHANGELOG generated${NC}\n"
+    
+    # 读取更新后的版本
+    new_version=$(node -p "require('./package.json').version")
+else
+    # 如果没有 changeset，提示用户
+    current_version=$(node -p "require('./package.json').version")
+    echo -e "${YELLOW}⚠️  No changesets found.${NC}"
+    echo -e "${BLUE}Please run 'pnpm changeset' first to create a changeset, then run release again.${NC}"
+    echo -e "${BLUE}Or continue with manual version bump?${NC}"
+    read -p "Continue with manual version? (y/N) " confirm_manual
+    if [[ ! $confirm_manual =~ ^[Yy]$ ]]; then
+        echo -e "${YELLOW}Release cancelled. Please create a changeset first: pnpm changeset${NC}"
+        exit 0
+    fi
+    
+    echo -e "${BLUE}Current version: ${current_version}${NC}"
+    read -p "Enter new version (or press Enter to keep current): " new_version
+    if [ -z "$new_version" ]; then
+        new_version=$current_version
+    fi
+    
+    if [ "$new_version" != "$current_version" ]; then
+        echo -e "${BLUE}Updating version to ${new_version}...${NC}"
+        npm version "$new_version" --no-git-tag-version || exit 1
+        echo -e "${GREEN}✓ Version updated to ${new_version}${NC}\n"
+    fi
 fi
 
 # 检查 npm 登录状态
@@ -127,7 +143,7 @@ echo -e "${GREEN}✓ Logged in as: ${npm_user}${NC}\n"
 
 # 确认发布
 echo -e "${YELLOW}⚠️  Ready to publish:${NC}"
-echo -e "  Package: @acr/ai-code-review"
+echo -e "  Package: @aicodereview/ai-code-review"
 echo -e "  Version: ${new_version}"
 echo -e "  User: ${npm_user}"
 echo ""
@@ -144,10 +160,13 @@ npm publish --access public || exit 1
 echo -e "${GREEN}✓ Published successfully${NC}\n"
 
 # 提交版本更改
-if [ "$new_version" != "$current_version" ]; then
+current_version_before=$(node -p "require('./package.json').version" 2>/dev/null || echo "0.0.0")
+if [ -n "$new_version" ] && [ "$new_version" != "$current_version_before" ]; then
     echo -e "${BLUE}Committing version changes...${NC}"
     git add package.json package-lock.json 2>/dev/null || true
     git add pnpm-lock.yaml 2>/dev/null || true
+    git add CHANGELOG.md 2>/dev/null || true
+    git add .changeset/*.md 2>/dev/null || true
     git commit --no-verify -m "chore: bump version to ${new_version}" || exit 1
     echo -e "${GREEN}✓ Version changes committed${NC}\n"
 fi
@@ -170,8 +189,8 @@ fi
 echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo -e "${GREEN}✅ Release completed successfully!${NC}"
 echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "Package: @acr/ai-code-review@${new_version}"
-echo -e "Install: npm install -g @acr/ai-code-review@${new_version}"
+echo -e "Package: @aicodereview/ai-code-review@${new_version}"
+echo -e "Install: npm install -g @aicodereview/ai-code-review@${new_version}"
 echo ""
 
 

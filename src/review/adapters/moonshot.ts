@@ -1,6 +1,7 @@
 import OpenAI from 'openai';
 import chalk from 'chalk';
 import type { LLMAdapter, LLMMessage, LLMRequestOptions, LLMResponse } from './base.js';
+import { t } from '../../utils/i18n.js';
 
 /**
  * 月之暗面模型的最大上下文长度（tokens）
@@ -42,7 +43,7 @@ export class MoonshotAdapter implements LLMAdapter {
     } = options;
 
     const requestStartTime = Date.now();
-    console.log(chalk.gray(`      [SDK] 使用 OpenAI SDK (兼容格式) 调用 Moonshot API (maxTokens: ${maxTokens})...`));
+    console.log(chalk.gray(`      ${t('adapter.moonshot.sdkCall', { maxTokens })}`));
 
     const client = new OpenAI({
       apiKey,
@@ -58,7 +59,7 @@ export class MoonshotAdapter implements LLMAdapter {
       });
 
       const requestDuration = Date.now() - requestStartTime;
-      console.log(chalk.gray(`      [SDK] API 调用完成，耗时: ${requestDuration}ms`));
+      console.log(chalk.gray(`      ${t('adapter.apiComplete', { duration: requestDuration })}`));
 
       const content = response.choices[0]?.message?.content || '';
       if (!content) {
@@ -75,12 +76,12 @@ export class MoonshotAdapter implements LLMAdapter {
       };
     } catch (error) {
       const requestDuration = Date.now() - requestStartTime;
-      console.error(chalk.red(`      [SDK] 请求失败，耗时: ${requestDuration}ms`));
+      console.error(chalk.red(`      ${t('adapter.requestFailed', { duration: requestDuration })}`));
       
       if (error instanceof OpenAI.APIError) {
-        console.error(chalk.red(`      [SDK] 错误详情: ${error.status} ${error.message}`));
+        console.error(chalk.red(`      ${t('adapter.errorDetails')} ${error.status} ${error.message}`));
         if (error.error) {
-          console.error(chalk.red(`      [SDK] 错误内容: ${JSON.stringify(error.error).substring(0, 500)}`));
+          console.error(chalk.red(`      ${t('adapter.errorContent')} ${JSON.stringify(error.error).substring(0, 500)}`));
         }
         throw new Error(`Moonshot API error: ${error.status} ${error.message}`);
       }

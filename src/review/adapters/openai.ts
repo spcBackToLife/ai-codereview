@@ -1,6 +1,7 @@
 import OpenAI from 'openai';
 import chalk from 'chalk';
 import type { LLMAdapter, LLMMessage, LLMRequestOptions, LLMResponse } from './base.js';
+import { t } from '../../utils/i18n.js';
 
 /**
  * OpenAI 模型的最大上下文长度（tokens）
@@ -75,10 +76,10 @@ export class OpenAIAdapter implements LLMAdapter {
     let normalizedBaseUrl = baseUrl || 'https://api.openai.com/v1';
     if (normalizedBaseUrl.endsWith('/chat/completions')) {
       normalizedBaseUrl = normalizedBaseUrl.replace(/\/chat\/completions\/?$/, '');
-      console.log(chalk.yellow(`      [API] 警告: baseURL 包含 /chat/completions，已自动移除。使用: ${normalizedBaseUrl}`));
+      console.log(chalk.yellow(`      ${t('adapter.openai.baseUrlWarning', { baseUrl: normalizedBaseUrl })}`));
     }
     
-    console.log(chalk.gray(`      [SDK] 使用 OpenAI SDK 调用 API (baseURL: ${normalizedBaseUrl}, maxTokens: ${maxTokens})...`));
+    console.log(chalk.gray(`      ${t('adapter.openai.sdkCall', { baseUrl: normalizedBaseUrl, maxTokens })}`));
 
     const client = new OpenAI({
       apiKey,
@@ -96,7 +97,7 @@ export class OpenAIAdapter implements LLMAdapter {
       });
 
       const requestDuration = Date.now() - requestStartTime;
-      console.log(chalk.gray(`      [SDK] API 调用完成，耗时: ${requestDuration}ms`));
+      console.log(chalk.gray(`      ${t('adapter.apiComplete', { duration: requestDuration })}`));
 
       const content = response.choices[0]?.message?.content || '';
       if (!content) {
@@ -113,12 +114,12 @@ export class OpenAIAdapter implements LLMAdapter {
       };
     } catch (error) {
       const requestDuration = Date.now() - requestStartTime;
-      console.error(chalk.red(`      [SDK] 请求失败，耗时: ${requestDuration}ms`));
+      console.error(chalk.red(`      ${t('adapter.requestFailed', { duration: requestDuration })}`));
       
       if (error instanceof OpenAI.APIError) {
-        console.error(chalk.red(`      [SDK] 错误详情: ${error.status} ${error.message}`));
+        console.error(chalk.red(`      ${t('adapter.errorDetails')} ${error.status} ${error.message}`));
         if (error.error) {
-          console.error(chalk.red(`      [SDK] 错误内容: ${JSON.stringify(error.error).substring(0, 500)}`));
+          console.error(chalk.red(`      ${t('adapter.errorContent')} ${JSON.stringify(error.error).substring(0, 500)}`));
         }
         throw new Error(`OpenAI API error: ${error.status} ${error.message}`);
       }

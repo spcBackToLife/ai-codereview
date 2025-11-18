@@ -1,5 +1,5 @@
 {
-  "name": "@acr/ai-code-review",
+  "name": "@aicodereview/ai-code-review",
   "version": "1.0.0",
   "description": "AI-powered code review tool for automated code review with multiple LLM providers",
   "type": "module",
@@ -13,14 +13,19 @@
     "examples",
     "README.md",
     "README.zh-CN.md",
-    "README-GITHUB.md"
+    "README-GITHUB.md",
+    "*.png"
   ],
   "scripts": {
     "build": "tsc && node scripts/postbuild.js",
     "dev": "tsx src/cli.ts --pwd /Users/kp/Documents/sass/fe.rms-partner",
     "start:ui": "cd ui && pnpm run dev",
     "build:ui": "cd ui && pnpm run build",
-    "postinstall": "cd ui && pnpm install"
+    "postinstall": "cd ui && pnpm install",
+    "release": "bash scripts/release.sh",
+    "changeset": "changeset",
+    "version": "changeset version",
+    "publish": "changeset publish"
   },
   "keywords": [
     "code-review",
@@ -46,6 +51,7 @@
     "simple-git": "^3.22.0"
   },
   "devDependencies": {
+    "@changesets/cli": "^2.27.1",
     "@types/cors": "^2.8.17",
     "@types/express": "^4.17.21",
     "@types/inquirer": "^9.0.7",

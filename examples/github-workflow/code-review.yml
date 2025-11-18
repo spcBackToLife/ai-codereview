@@ -25,9 +25,9 @@ jobs:
           node-version: '20'
           cache: 'npm'
       
-      # 安装 code-review-tool npm 包
-      - name: Install code-review-tool
-        run: npm install -g @acr/ai-code-review
+      # 安装 ai-codereview npm 包
+      - name: Install ai-codereview
+        run: npm install -g @aicodereview/ai-code-review
       
       - name: Run AI Code Review
         env:
@@ -58,8 +58,8 @@ jobs:
           retention-days: 7
           
       # 可选: 如果不想全局安装，可以使用 npx（需要先安装包，然后执行命令）
-      # - name: Install code-review-tool (local)
-      #   run: npm install @acr/ai-code-review
+      # - name: Install ai-codereview (local)
+      #   run: npm install @aicodereview/ai-code-review
       # 
       # - name: Run AI Code Review (with npx)
       #   env:
