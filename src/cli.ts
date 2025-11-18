@@ -6,6 +6,7 @@ import { getDiff } from './git/diff.js';
 import { reviewCode } from './review/agent.js';
 import { startServer } from './server/index.js';
 import { saveReviewResult, saveCommentsToFile, saveDiffToFile } from './utils/storage.js';
+import { setLanguage, t, formatDate, formatDuration, type Language } from './utils/i18n.js';
 import chalk from 'chalk';
 import path from 'path';
 import { existsSync } from 'fs';
@@ -30,6 +31,7 @@ program
   .option('--no-server', 'Do not start review report server, save results to JSON files instead')
   .option('-o, --output <directory>', 'Output directory for JSON files (comments and diff). If --no-server is used without this option, defaults to .code-review in current directory')
   .option('--max-retries <number>', 'Maximum number of continuation attempts for incomplete JSON responses (default: 10)', '10')
+  .option('--lang <language>', 'Language: en or zh-CN (default: en)', 'en')
   .action(async (baseBranch?: string) => {
     const options = program.opts<{ 
       rules?: string[]; 
@@ -38,7 +40,12 @@ program
       server?: boolean; // commander.js 会自动处理 --no-server，将其设置为 false
       output?: string;
       maxRetries?: number;
+      lang?: string;
     }>();
+    
+    // Set language
+    const lang = (options.lang === 'zh-CN' ? 'zh-CN' : 'en') as Language;
+    setLanguage(lang);
     try {
       // 加载 .env 文件
       const workDir = path.resolve(options.pwd || process.cwd());
@@ -105,29 +112,29 @@ program
         }
       }
 
-      console.log(chalk.gray(`📊 Comparing current branch with: ${targetBranch}\n`));
+      console.log(chalk.gray(`${t('cli.comparing')} ${targetBranch}\n`));
 
       // 获取 Git diff
-      console.log(chalk.blue('📝 Analyzing changes...'));
+      console.log(chalk.blue(`📝 ${t('cli.analyzing')}`));
       const diff = await getDiff(targetBranch, workDir);
       
       if (!diff || diff.length === 0) {
-        console.log(chalk.yellow('⚠️  No changes found between branches.'));
+        console.log(chalk.yellow(`⚠️  ${t('cli.noChanges')}`));
         process.exit(0);
       }
 
-      console.log(chalk.green(`✓ Found ${diff.length} changed file(s)\n`));
+      console.log(chalk.green(`✓ ${t('cli.foundFiles', { count: diff.length })}\n`));
 
       // 进行代码审查
-      console.log(chalk.blue('🤖 Running AI code review...'));
+      console.log(chalk.blue(`🤖 ${t('cli.runningReview')}`));
       const additionalRuleFiles = options?.rules || [];
       if (additionalRuleFiles.length > 0) {
-        console.log(chalk.gray(`   Loading ${additionalRuleFiles.length} additional rule file(s)...`));
+        console.log(chalk.gray(`   ${t('cli.loadingRules', { count: additionalRuleFiles.length })}`));
       }
       
       const maxRetries = options?.maxRetries !== undefined ? options.maxRetries : 10;
       if (isNaN(maxRetries) || maxRetries < 0) {
-        console.warn(chalk.yellow(`⚠️  Invalid --max-retries value, using default: 10`));
+        console.warn(chalk.yellow(`⚠️  ${t('cli.invalidMaxRetries')}`));
       }
       const validMaxRetries = (isNaN(maxRetries) || maxRetries < 0) ? 10 : maxRetries;
       
@@ -137,7 +144,7 @@ program
         reviewResult = await reviewCode(diff, additionalRuleFiles, validMaxRetries);
         reviewSuccess = true;
       } catch (error) {
-        console.error(chalk.red('❌ Code review failed:'), error instanceof Error ? error.message : String(error));
+        console.error(chalk.red(`❌ ${t('cli.reviewFailed')}`), error instanceof Error ? error.message : String(error));
         // 即使失败，也尝试保存部分结果（如果有的话）
         if (error && typeof error === 'object' && 'partialResult' in error) {
           reviewResult = (error as { partialResult: typeof reviewResult }).partialResult;
@@ -150,17 +157,17 @@ program
       const warningCount = reviewResult.comments.filter(c => c.severity === 'warning').length;
       const infoCount = reviewResult.comments.filter(c => c.severity === 'info').length;
       
-      console.log(chalk.green(`✓ Review completed\n`));
-      console.log(chalk.gray('   Review Statistics:'));
-      console.log(chalk.gray(`   - Total comments: ${reviewResult.comments.length}`));
+      console.log(chalk.green(`✓ ${t('cli.reviewCompleted')}\n`));
+      console.log(chalk.gray(`   ${t('cli.statistics')}`));
+      console.log(chalk.gray(`   - ${t('cli.totalComments', { count: reviewResult.comments.length })}`));
       if (errorCount > 0) {
-        console.log(chalk.red(`   - Errors: ${errorCount}`));
+        console.log(chalk.red(`   - ${t('cli.errors', { count: errorCount })}`));
       }
       if (warningCount > 0) {
-        console.log(chalk.yellow(`   - Warnings: ${warningCount}`));
+        console.log(chalk.yellow(`   - ${t('cli.warnings', { count: warningCount })}`));
       }
       if (infoCount > 0) {
-        console.log(chalk.blue(`   - Info: ${infoCount}`));
+        console.log(chalk.blue(`   - ${t('cli.info', { count: infoCount })}`));
       }
       console.log('');
 
@@ -183,9 +190,9 @@ program
         const commentsPath = await saveCommentsToFile(reviewResult.comments, outputDir, timestamp);
         const diffPath = await saveDiffToFile(diff, outputDir, timestamp);
         
-        console.log(chalk.green(`✓ Review results saved to JSON files:`));
-        console.log(chalk.gray(`   Comments: ${commentsPath}`));
-        console.log(chalk.gray(`   Diff: ${diffPath}\n`));
+        console.log(chalk.green(`✓ ${t('cli.resultsSaved')}`));
+        console.log(chalk.gray(`   ${t('cli.comments')} ${commentsPath}`));
+        console.log(chalk.gray(`   ${t('cli.diff')} ${diffPath}\n`));
       }
       
       // 如果需要启动服务器
@@ -202,11 +209,11 @@ program
         console.log(chalk.gray(`   ${resultPath}\n`));
 
         // 启动服务器
-        console.log(chalk.blue('🚀 Starting review server...'));
+        console.log(chalk.blue(`🚀 ${t('cli.startingServer')}`));
         const port = await startServer(resultPath);
         const url = `http://localhost:${port}`;
         
-        console.log(chalk.green(`✓ Server started successfully\n`));
+        console.log(chalk.green(`✓ ${t('cli.serverStarted')}\n`));
         console.log(chalk.cyan('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'));
         console.log(chalk.cyan.bold(`📖 Review Report: ${url}`));
         console.log(chalk.cyan('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n'));
@@ -215,7 +222,7 @@ program
     } catch (error) {
       console.error(chalk.red('❌ Error:'), error instanceof Error ? error.message : String(error));
       // 失败时不启动服务器
-      console.log(chalk.gray('\n⚠️  Review failed, server will not be started.'));
+      console.log(chalk.gray(`\n⚠️  ${t('cli.reviewFailedNoServer')}`));
       process.exit(1);
     }
   });

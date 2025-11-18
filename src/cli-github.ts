@@ -10,6 +10,7 @@ import {
   createGitHubPRReview,
   addGitHubPRComment,
 } from './utils/github.js';
+import { setLanguage, t, type Language } from './utils/i18n.js';
 import chalk from 'chalk';
 import path from 'path';
 import { existsSync } from 'fs';
@@ -37,6 +38,7 @@ program
   .option('--github-pr <number>', 'GitHub PR number (or set GITHUB_PR_NUMBER env var)')
   .option('--review-event <event>', 'GitHub review event: COMMENT, APPROVE, or REQUEST_CHANGES (default: COMMENT)', 'COMMENT')
   .option('-o, --output <directory>', 'Output directory for JSON files (default: .code-review in current directory)')
+  .option('--lang <language>', 'Language: en or zh-CN (default: en)', 'en')
   .action(async () => {
     const options = program.opts<{
       rules?: string[];
@@ -49,7 +51,12 @@ program
       githubPr?: string;
       reviewEvent?: string;
       output?: string;
+      lang?: string;
     }>();
+    
+    // Set language
+    const lang = (options.lang === 'zh-CN' ? 'zh-CN' : 'en') as Language;
+    setLanguage(lang);
 
     try {
       // 加载 .env 文件
@@ -108,31 +115,31 @@ program
         throw new Error(`Invalid review event: ${reviewEvent}. Must be COMMENT, APPROVE, or REQUEST_CHANGES.`);
       }
 
-      console.log(chalk.blue('🔍 Starting code review for GitHub PR...\n'));
-      console.log(chalk.gray(`📁 Working directory: ${workDir}\n`));
-      console.log(chalk.gray(`🔗 GitHub: ${githubOwner}/${githubRepo}#${prNumber}\n`));
+      console.log(chalk.blue(`${t('github.starting')}\n`));
+      console.log(chalk.gray(`${t('github.workingDir')} ${workDir}\n`));
+      console.log(chalk.gray(`${t('github.github')} ${githubOwner}/${githubRepo}#${prNumber}\n`));
 
       // 获取 Git diff（对比 PR 的 base 分支）
       // 在 GitHub Actions 中，可以通过环境变量 GITHUB_BASE_REF 获取 base 分支
       // 格式通常是 'main' 或 'master'，需要加上 'origin/' 前缀
       const baseRef = process.env.GITHUB_BASE_REF || 'main';
       const baseBranch = baseRef.startsWith('origin/') ? baseRef : `origin/${baseRef}`;
-      console.log(chalk.blue('📝 Analyzing changes...'));
-      console.log(chalk.gray(`   对比分支: ${baseBranch}`));
+      console.log(chalk.blue(`📝 ${t('cli.analyzing')}`));
+      console.log(chalk.gray(`   ${t('github.comparingBranch')} ${baseBranch}`));
       const diff = await getDiff(baseBranch, workDir);
 
       if (!diff || diff.length === 0) {
-        console.log(chalk.yellow('⚠️  No changes found.'));
+        console.log(chalk.yellow(`⚠️  ${t('cli.noChanges')}`));
         process.exit(0);
       }
 
-      console.log(chalk.green(`✓ Found ${diff.length} changed file(s)\n`));
+      console.log(chalk.green(`✓ ${t('cli.foundFiles', { count: diff.length })}\n`));
 
       // 进行代码审查
-      console.log(chalk.blue('🤖 Running AI code review...'));
+      console.log(chalk.blue(`🤖 ${t('cli.runningReview')}`));
       const additionalRuleFiles = options?.rules || [];
       if (additionalRuleFiles.length > 0) {
-        console.log(chalk.gray(`   Loading ${additionalRuleFiles.length} additional rule file(s)...`));
+        console.log(chalk.gray(`   ${t('cli.loadingRules', { count: additionalRuleFiles.length })}`));
       }
 
       const maxRetries = options?.maxRetries !== undefined ? parseInt(options.maxRetries, 10) : 10;
@@ -145,17 +152,17 @@ program
       const warningCount = reviewResult.comments.filter(c => c.severity === 'warning').length;
       const infoCount = reviewResult.comments.filter(c => c.severity === 'info').length;
 
-      console.log(chalk.green(`✓ Review completed\n`));
-      console.log(chalk.gray('   Review Statistics:'));
-      console.log(chalk.gray(`   - Total comments: ${reviewResult.comments.length}`));
+      console.log(chalk.green(`✓ ${t('cli.reviewCompleted')}\n`));
+      console.log(chalk.gray(`   ${t('cli.statistics')}`));
+      console.log(chalk.gray(`   - ${t('cli.totalComments', { count: reviewResult.comments.length })}`));
       if (errorCount > 0) {
-        console.log(chalk.red(`   - Errors: ${errorCount}`));
+        console.log(chalk.red(`   - ${t('cli.errors', { count: errorCount })}`));
       }
       if (warningCount > 0) {
-        console.log(chalk.yellow(`   - Warnings: ${warningCount}`));
+        console.log(chalk.yellow(`   - ${t('cli.warnings', { count: warningCount })}`));
       }
       if (infoCount > 0) {
-        console.log(chalk.blue(`   - Info: ${infoCount}`));
+        console.log(chalk.blue(`   - ${t('cli.info', { count: infoCount })}`));
       }
       console.log('');
 
@@ -170,13 +177,13 @@ program
         const commentsPath = await saveCommentsToFile(reviewResult.comments, outputDir, timestamp);
         const diffPath = await saveDiffToFile(diff, outputDir, timestamp);
 
-        console.log(chalk.green(`✓ Review results saved to JSON files:`));
-        console.log(chalk.gray(`   Comments: ${commentsPath}`));
-        console.log(chalk.gray(`   Diff: ${diffPath}\n`));
+        console.log(chalk.green(`✓ ${t('cli.resultsSaved')}`));
+        console.log(chalk.gray(`   ${t('cli.comments')} ${commentsPath}`));
+        console.log(chalk.gray(`   ${t('cli.diff')} ${diffPath}\n`));
       }
 
       // 转换为 GitHub PR Review 格式
-      console.log(chalk.blue('📤 Preparing GitHub PR review...'));
+      console.log(chalk.blue(`📤 ${t('github.preparingReview')}`));
       const githubComments = convertToGitHubComments(reviewResult.comments, diff);
       const reviewBody = generatePRReviewBody(
         reviewResult.comments,
@@ -192,12 +199,12 @@ program
         // 如果有错误，自动设置为 REQUEST_CHANGES
         if (errorCount > 0) {
           finalReviewEvent = 'REQUEST_CHANGES';
-          console.log(chalk.yellow(`⚠️  Found ${errorCount} errors, changing review event to REQUEST_CHANGES`));
+          console.log(chalk.yellow(`⚠️  ${t('github.foundErrors', { count: errorCount })}`));
         }
       }
 
       // 创建 GitHub PR Review
-      console.log(chalk.blue(`🚀 Creating GitHub PR review (${finalReviewEvent})...`));
+      console.log(chalk.blue(`🚀 ${t('github.creatingReview', { event: finalReviewEvent })}`));
       await createGitHubPRReview(
         githubOwner,
         githubRepo,
@@ -210,8 +217,8 @@ program
         githubToken
       );
 
-      console.log(chalk.green(`✓ GitHub PR review created successfully\n`));
-      console.log(chalk.cyan(`🔗 View PR: https://github.com/${githubOwner}/${githubRepo}/pull/${prNumber}\n`));
+      console.log(chalk.green(`✓ ${t('github.reviewCreated')}\n`));
+      console.log(chalk.cyan(`🔗 ${t('github.viewPR')} https://github.com/${githubOwner}/${githubRepo}/pull/${prNumber}\n`));
 
     } catch (error) {
       console.error(chalk.red('❌ Error:'), error instanceof Error ? error.message : String(error));

@@ -1,221 +1,438 @@
-# Code Review Tool
+# @acr/ai-code-review
 
-基于 DeepSeek AI 的代码审查工具，可以自动对比 Git 分支差异并进行代码审查。
+[![npm version](https://img.shields.io/npm/v/@acr/ai-code-review.svg)](https://www.npmjs.com/package/@acr/ai-code-review)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-## 功能特性
+An AI-powered code review tool that automatically reviews code changes using Large Language Models (LLMs). Supports multiple LLM providers including OpenAI, Anthropic, Moonshot, and custom providers.
 
-- 🔍 **自动分支对比**：支持对比当前分支与指定分支（默认 master）
-- 🔎 **分支搜索**：交互式分支选择，支持搜索过滤
-- 🤖 **AI 代码审查**：基于 DeepSeek 模型进行智能代码审查
-- 📊 **可视化展示**：类似 GitHub 的代码审查界面，展示 Diff 和评论
-- 🚀 **自动启动**：审查完成后自动启动本地服务器和浏览器
+## 🌟 Features
 
-## 安装
+### Core Capabilities
 
-### 1. 安装依赖
+- 🤖 **AI-Powered Code Review**: Automatically reviews code changes using advanced LLM models
+- 🔍 **Git Integration**: Seamlessly compares branches and analyzes diffs
+- 📊 **Interactive Web UI**: Beautiful, GitHub-like interface for reviewing results
+- 🎯 **Rule-Based Review**: Built-in rules for TypeScript, React, and code design best practices
+- 🔄 **Batch Processing**: Intelligently splits large changesets into manageable batches
+- 📝 **Detailed Comments**: Provides line-by-line comments with severity levels and suggestions
+- ⚡ **Fast & Efficient**: Optimized token estimation and context management
+
+### LLM Provider Support
+
+- **OpenAI**: GPT-3.5, GPT-4, and other OpenAI models
+- **Anthropic**: Claude models via Anthropic API
+- **Moonshot**: Moonshot AI models
+- **Custom**: Support for any OpenAI-compatible API endpoint (e.g., DeepSeek)
+
+### Advanced Features
+
+- 🌐 **Internationalization**: Supports English and Chinese (Simplified)
+- 🔁 **Retry Mechanism**: Automatic retry for incomplete JSON responses
+- 📈 **Statistics Dashboard**: Comprehensive statistics and problem analysis
+- 🔗 **GitHub Integration**: Automatically post reviews as PR comments
+- 💾 **Export Results**: Save review results as JSON files
+- 🎨 **Theme Support**: Light and dark themes in the web UI
+
+## 📦 Installation
+
+### Global Installation (Recommended)
 
 ```bash
-cd codereview/code-review-tool
-
-# 安装主项目依赖
-npm install
-
-# 安装前端 UI 依赖
-cd ui
-npm install
-cd ..
+npm install -g @acr/ai-code-review
 ```
 
-### 2. 构建项目
+### Local Installation
 
 ```bash
-# 构建 TypeScript 代码
+npm install --save-dev @acr/ai-code-review
+```
+
+### From Source
+
+```bash
+git clone <repository-url>
+cd code-review-tool
+npm install
 npm run build
-
-# 构建前端（可选，开发模式下会自动启动）
-npm run build:ui
 ```
 
-### 3. 全局安装（可选）
+## ⚙️ Configuration
+
+### Environment Variables
+
+Create a `.env` file in your project root or set environment variables:
 
 ```bash
-# 在项目根目录执行
-npm link
+# Required
+LLM_API_KEY=your_api_key_here
 
-# 或者使用 npm install -g . 安装到全局
+# Optional - LLM Provider Configuration
+LLM_PROVIDER=openai          # Options: openai, anthropic, moonshot, custom
+LLM_MODEL_NAME=gpt-3.5-turbo # Model name (varies by provider)
+LLM_BASE_URL=                # Required for custom provider
+LLM_MAX_TOKENS=8192          # Maximum output tokens
+
+# Optional - Language
+LANG=en                      # Options: en, zh-CN (default: en)
 ```
 
-安装后，可以在任何目录使用 `code-review` 命令。
+### Example `.env` Files
 
-## 配置
+**OpenAI:**
+```bash
+LLM_PROVIDER=openai
+LLM_MODEL_NAME=gpt-4
+LLM_API_KEY=sk-...
+```
 
-在使用前，需要设置 DeepSeek API Key：
+**Anthropic:**
+```bash
+LLM_PROVIDER=anthropic
+LLM_MODEL_NAME=claude-3-opus-20240229
+LLM_API_KEY=sk-ant-...
+```
+
+**Custom (DeepSeek):**
+```bash
+LLM_PROVIDER=custom
+LLM_MODEL_NAME=deepseek-chat
+LLM_BASE_URL=https://api.deepseek.com
+LLM_API_KEY=sk-...
+```
+
+## 🚀 Quick Start
+
+### Basic Usage
 
 ```bash
-export DEEPSEEK_API_KEY=your_api_key_here
-```
-
-或者在项目根目录创建 `.env` 文件：
-
-```
-DEEPSEEK_API_KEY=your_api_key_here
-```
-
-## 使用方法
-
-### 基本用法
-
-```bash
-# 对比当前分支与 master 分支
+# Review changes against master branch
 code-review master
 
-# 对比当前分支与指定分支
+# Review against a specific branch
 code-review develop
 
-# 不指定分支，会弹出交互式选择
+# Interactive branch selection
 code-review
 
-# 使用额外的规则文件
-code-review master --rules ./custom-rules.json ./another-rules.json
+# Use custom rules
+code-review master --rules ./custom-rules.json
+
+# Save results without starting server
+code-review master --no-server --output ./review-results
+
+# Use Chinese language
+code-review master --lang zh-CN
 ```
 
-### 开发模式
+### GitHub PR Integration
 
 ```bash
-# 使用 tsx 直接运行（无需编译）
-npm run dev master
-
-# 或者直接运行 TypeScript 文件
-npx tsx src/cli.ts master
+# Review and post to GitHub PR
+code-review-github \
+  --github-token $GITHUB_TOKEN \
+  --github-owner owner \
+  --github-repo repo \
+  --github-pr 123 \
+  --pwd /path/to/repo
 ```
 
-### 首次使用前
+## 📖 Usage Guide
 
-确保 UI 依赖已安装：
+### Command Line Options
+
+#### `code-review` Command
 
 ```bash
-cd ui
-npm install
-cd ..
+code-review [baseBranch] [options]
+
+Options:
+  -r, --rules <files...>     Additional rule JSON files to load
+  -p, --pwd <directory>      Working directory (default: current directory)
+  --env <file>               Path to .env file (default: .env)
+  --no-server                Do not start review report server
+  -o, --output <directory>   Output directory for JSON files
+  --max-retries <number>     Maximum continuation attempts for incomplete JSON (default: 10)
+  --lang <language>          Language: en or zh-CN (default: en)
+  -h, --help                 Display help
+  -V, --version              Display version
 ```
 
-## 工作流程
-
-1. **选择分支**：如果没有指定分支，工具会列出所有远程分支供选择
-2. **获取 Diff**：对比当前分支与目标分支的代码差异
-3. **AI 审查**：调用 DeepSeek API 对代码变更进行审查
-4. **保存结果**：将审查结果保存到 `~/.code-review/` 目录
-5. **启动服务**：自动启动本地服务器（API: 3001, UI: 3000）
-6. **打开浏览器**：自动打开浏览器展示审查结果
-
-## 项目结构
-
-```
-code-review-tool/
-├── src/
-│   ├── cli.ts              # CLI 入口
-│   ├── git/
-│   │   ├── branchSelector.ts  # 分支选择逻辑
-│   │   └── diff.ts            # Git diff 解析
-│   ├── review/
-│   │   └── agent.ts           # DeepSeek AI 审查 Agent
-│   ├── server/
-│   │   └── index.ts           # API 服务器
-│   └── utils/
-│       └── storage.ts         # 结果存储
-├── ui/                        # React 前端应用
-│   ├── src/
-│   │   ├── App.tsx
-│   │   └── components/
-│   │       ├── ReviewView.tsx
-│   │       ├── FileDiffView.tsx
-│   │       ├── CommentMarker.tsx
-│   │       └── SummaryPanel.tsx
-│   └── package.json
-└── package.json
-```
-
-## 代码审查规范
-
-工具会自动加载内置的规范文件（位于 `src/review/rules/`）：
-- `typescript.json` - TypeScript 开发规范
-- `react.json` - React 开发规范
-- `codeDesign.json` - 代码设计规范
-
-### 使用自定义规则文件
-
-你可以通过 `--rules` 参数添加额外的规则文件：
+#### `code-review-github` Command
 
 ```bash
-code-review master --rules ./my-custom-rules.json ./team-rules.json
+code-review-github [options]
+
+Options:
+  -r, --rules <files...>           Additional rule JSON files to load
+  -p, --pwd <directory>            Working directory (default: current directory)
+  --env <file>                     Path to .env file (default: .env)
+  --max-retries <number>           Maximum continuation attempts (default: 10)
+  --github-token <token>           GitHub token (or set GITHUB_TOKEN env var)
+  --github-owner <owner>           Repository owner (or set GITHUB_REPOSITORY_OWNER)
+  --github-repo <repo>             Repository name (or set GITHUB_REPOSITORY_NAME)
+  --github-pr <number>             PR number (or set GITHUB_PR_NUMBER)
+  --review-event <event>           Review event: COMMENT, APPROVE, or REQUEST_CHANGES
+  -o, --output <directory>         Output directory for JSON files
+  --lang <language>                Language: en or zh-CN (default: en)
+  -h, --help                       Display help
+  -V, --version                    Display version
 ```
 
-**规则文件格式**：
+### Workflow
 
-规则文件必须是 JSON 格式，结构如下：
+1. **Branch Selection**: If no branch is specified, the tool lists all remote branches for selection
+2. **Diff Analysis**: Compares current branch with target branch and extracts code changes
+3. **File Filtering**: Automatically filters to review only `.ts` and `.tsx` files
+4. **Batch Processing**: Splits files into batches based on context window limits
+5. **AI Review**: Calls LLM API to review each batch of changes
+6. **Result Processing**: Parses and normalizes review comments
+7. **Output**: Saves results and optionally starts web server
+
+### Review Rules
+
+The tool includes built-in rules for:
+
+- **TypeScript** (15 rules): Type safety, interface definitions, generics, etc.
+- **React** (20 rules): Component design, hooks usage, performance optimization, etc.
+- **Code Design** (21 rules): Function design, code organization, error handling, etc.
+
+#### Custom Rules
+
+Create custom rule files in JSON format:
 
 ```json
 {
   "category": "custom",
-  "name": "自定义规范",
+  "name": "Custom Rules",
   "rules": [
     {
       "id": "custom-001",
-      "name": "规则名称",
-      "description": "规则描述",
-      "level": "强卡控|建议|优化",
-      "goodExample": "正确示例代码",
-      "badExample": "错误示例代码",
-      "reason": "规则原因说明"
+      "name": "Rule Name",
+      "description": "Rule description",
+      "level": "strict|suggestion|optimization",
+      "goodExample": "Correct example code",
+      "badExample": "Incorrect example code",
+      "reason": "Why this rule exists"
     }
   ]
 }
 ```
 
-**注意事项**：
-- 只处理 `.json` 文件，其他格式会被忽略
-- 规则文件路径可以是相对路径或绝对路径
-- 多个规则文件会被合并使用
+Load custom rules:
 
-## 审查结果格式
-
-审查结果包含以下信息：
-
-- **文件变更列表**：显示所有变更的文件及其状态（新增/修改/删除）
-- **代码 Diff**：类似 GitHub 的代码对比视图
-- **审查评论**：每条评论包含：
-  - 文件路径和行号
-  - 严重程度（error/warning/info）
-  - 评论内容
-  - 建议（如果有）
-  - 规则 ID（如果匹配到规范）
-  - 标签（tags）：标识问题属于哪个规范类别（typescript/react/code-design）
-
-## 注意事项
-
-1. 确保已安装 Node.js 18+ 和 npm
-2. 需要有效的 DeepSeek API Key
-3. 需要在 Git 仓库中运行
-4. 确保有网络连接以调用 DeepSeek API
-
-## 故障排除
-
-### API Key 未设置
-```
-Error: DEEPSEEK_API_KEY environment variable is not set
-```
-解决：设置环境变量 `DEEPSEEK_API_KEY`
-
-### 无法获取分支列表
-确保当前目录是 Git 仓库，并且有远程分支。
-
-### UI 服务器启动失败
-检查端口 3000 和 3001 是否被占用，或者手动启动 UI：
 ```bash
-cd ui && npm install && npm run dev
+code-review master --rules ./my-rules.json ./team-rules.json
 ```
 
-## License
+## 🎨 Web UI Features
 
-MIT
+The web interface provides:
 
+- **File Tree**: Navigate through changed files
+- **Diff View**: Side-by-side code comparison
+- **Comment Markers**: Inline comments with severity indicators
+- **Statistics Dashboard**: 
+  - Problem type distribution (pie chart)
+  - Rule statistics
+  - File-level statistics
+- **Filtering**: Filter comments by severity, file, or rule
+- **Theme Toggle**: Switch between light and dark themes
+
+## 🔗 GitHub Actions Integration
+
+See [README-GITHUB.md](./README-GITHUB.md) for detailed GitHub Actions setup instructions.
+
+Quick setup:
+
+1. Copy `examples/github-workflow/code-review.yml` to `.github/workflows/`
+2. Configure GitHub Secrets (LLM_API_KEY, etc.)
+3. Push to trigger automatic code reviews on PRs
+
+## 📊 Review Result Format
+
+### Comment Structure
+
+```typescript
+{
+  filePath: string;        // File path
+  line: number;            // Start line number
+  endLine: number;         // End line number
+  severity: 'error' | 'warning' | 'info';
+  message: string;         // Comment message
+  ruleId: string;          // Rule ID
+  ruleName: string;        // Rule name
+  ruleLevel: string;       // Rule level (strict/suggestion/optimization)
+  ruleDesc: string;        // Rule description
+  suggestion?: string;     // Optional suggestion
+  tags?: string[];         // Optional tags
+}
+```
+
+### Review Result
+
+```typescript
+{
+  comments: ReviewComment[];
+  summary: string;
+  startTime?: string;      // ISO 8601 format
+  endTime?: string;        // ISO 8601 format
+  duration?: number;       // Duration in milliseconds
+}
+```
+
+## 🛠️ Development
+
+### Prerequisites
+
+- Node.js 18+
+- npm or pnpm
+
+### Setup
+
+```bash
+# Install dependencies
+npm install
+
+# Install UI dependencies
+cd ui && npm install && cd ..
+
+# Build
+npm run build
+
+# Development mode
+npm run dev master
+```
+
+### Project Structure
+
+```
+code-review-tool/
+├── src/
+│   ├── cli.ts              # Main CLI entry
+│   ├── cli-github.ts       # GitHub CLI entry
+│   ├── git/                # Git operations
+│   ├── review/             # Review logic
+│   │   ├── adapters/       # LLM provider adapters
+│   │   ├── agent.ts        # Review agent
+│   │   └── rules/          # Built-in rules
+│   ├── server/             # Web server
+│   └── utils/              # Utilities
+│       ├── i18n.ts         # Internationalization
+│       ├── github.ts       # GitHub API
+│       └── storage.ts      # File storage
+├── ui/                     # React web UI
+└── examples/               # Example files
+```
+
+## 🌍 Internationalization
+
+The tool supports multiple languages:
+
+- **English (en)**: Default language
+- **Chinese Simplified (zh-CN)**: Full Chinese support
+
+Set language via CLI:
+
+```bash
+code-review master --lang zh-CN
+```
+
+Or via environment variable:
+
+```bash
+export LANG=zh-CN
+code-review master
+```
+
+## 📝 Examples
+
+### Example 1: Basic Review
+
+```bash
+code-review master
+```
+
+### Example 2: Review with Custom Rules
+
+```bash
+code-review develop --rules ./team-rules.json
+```
+
+### Example 3: Save Results Only
+
+```bash
+code-review master --no-server --output ./reviews
+```
+
+### Example 4: GitHub PR Review
+
+```bash
+code-review-github \
+  --github-token $GITHUB_TOKEN \
+  --github-owner myorg \
+  --github-repo myrepo \
+  --github-pr 42
+```
+
+### Example 5: Custom LLM Provider
+
+```bash
+# .env
+LLM_PROVIDER=custom
+LLM_MODEL_NAME=deepseek-chat
+LLM_BASE_URL=https://api.deepseek.com
+LLM_API_KEY=sk-...
+
+code-review master
+```
+
+## 🐛 Troubleshooting
+
+### Common Issues
+
+**Issue**: `LLM_API_KEY environment variable is not set`
+
+**Solution**: Set the `LLM_API_KEY` environment variable or create a `.env` file.
+
+**Issue**: `Context length exceeded`
+
+**Solution**: The changeset is too large. The tool automatically batches files, but if a single file exceeds the limit, consider:
+- Using a model with a larger context window
+- Reducing the `LLM_MAX_TOKENS` value
+- Reviewing smaller changesets
+
+**Issue**: `Failed to parse JSON response`
+
+**Solution**: The tool automatically retries incomplete JSON responses. If it still fails:
+- Increase `--max-retries` value
+- Check your API key and network connection
+- Try a different model
+
+**Issue**: Server port already in use
+
+**Solution**: The tool automatically finds an available port. If issues persist, check for other processes using ports 3000-3010.
+
+## 📄 License
+
+MIT License - see [LICENSE](./LICENSE) file for details.
+
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## 📚 Related Documentation
+
+- [GitHub Actions Integration Guide](./README-GITHUB.md)
+- [Chinese Documentation](./README.zh-CN.md)
+
+## 🙏 Acknowledgments
+
+Built with:
+- [OpenAI SDK](https://github.com/openai/openai-node)
+- [Anthropic SDK](https://github.com/anthropics/anthropic-sdk-typescript)
+- [React](https://react.dev/)
+- [TypeScript](https://www.typescriptlang.org/)
+
+---
+
+Made with ❤️ for better code quality
